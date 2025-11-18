@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 320">
+    <defs>
+        <style>
+            .cap { fill: #000000; }
+            .cap-edge { fill: #facc15; }
+            .text-main { font: 700 48px 'Arial', sans-serif; fill: #000; }
+            .text-sub { font: 600 18px 'Arial', sans-serif; fill: #000; }
+            .text-slogan { font: 600 20px 'Arial', sans-serif; fill: #000; }
+            .line { stroke: #000; stroke-width: 8; stroke-linecap: round; }
+        </style>
+    </defs>
+    <rect width="300" height="320" fill="#fff"/>
+    <polygon class="cap" points="50,70 150,30 250,70 150,110"/>
+    <polygon class="cap-edge" points="50,70 150,40 250,70 150,90"/>
+    <rect class="cap" x="140" y="90" width="20" height="40"/>
+    <line class="cap" x1="230" y1="70" x2="230" y2="140" stroke-width="8"/>
+    <circle class="cap-edge" cx="230" cy="145" r="7"/>
+    <line class="line" x1="30" y1="160" x2="150" y2="220"/>
+    <line class="line" x1="270" y1="160" x2="150" y2="220"/>
+    <line class="line" x1="30" y1="185" x2="150" y2="235"/>
+    <line class="line" x1="270" y1="185" x2="150" y2="235"/>
+    <circle cx="150" cy="205" r="4" fill="#ef4444"/>
+    <text class="text-sub" x="58" y="250">Since</text>
+    <text class="text-sub" x="220" y="250">2002</text>
+    <text class="text-main" x="68" y="290">BASIC</text>
+    <rect x="70" y="300" width="160" height="32" rx="16" fill="#000"/>
+    <text class="text-slogan" x="82" y="323" fill="#fff">Quite Exceptional</text>
+</svg>
