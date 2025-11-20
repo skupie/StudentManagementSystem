@@ -1,5 +1,5 @@
 <div class="bg-white shadow rounded-lg p-6 space-y-6">
-    <div class="grid md:grid-cols-3 gap-4">
+    <div class="grid md:grid-cols-4 gap-4">
         <div>
             <x-input-label value="Search by name or phone" />
             <x-text-input type="text" class="mt-1 block w-full" placeholder="e.g. Rahim or 01..." wire:model.live.debounce.300ms="search" />
@@ -12,13 +12,36 @@
                 <option value="all">All</option>
             </select>
         </div>
-        <div class="flex items-end justify-end gap-2">
-            <x-secondary-button wire:click="resetForm">
-                {{ __('Reset Form') }}
-            </x-secondary-button>
-            <x-secondary-button type="button" onclick="window.location='{{ route('students.export.excel') }}'">
-                {{ __('Download Excel') }}
-            </x-secondary-button>
+        <div>
+            <x-input-label value="Class Filter" />
+            <select wire:model.live.debounce.300ms="classFilter" class="mt-1 block w-full rounded-md border-gray-300">
+                @foreach ($filterClassOptions as $key => $label)
+                    <option value="{{ $key }}">{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <x-input-label value="Section Filter" />
+            <select wire:model.live.debounce.300ms="sectionFilter" class="mt-1 block w-full rounded-md border-gray-300">
+                @foreach ($filterSectionOptions as $key => $label)
+                    <option value="{{ $key }}">{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center justify-end gap-2">
+        <x-secondary-button wire:click="resetForm">
+            {{ __('Reset Form') }}
+        </x-secondary-button>
+        <x-secondary-button type="button" onclick="window.location='{{ route('students.export.excel') }}'">
+            {{ __('Download Excel') }}
+        </x-secondary-button>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <p class="text-sm text-blue-800">Total Students</p>
+            <p class="text-3xl font-bold text-blue-900 mt-1">{{ number_format($totalStudents) }}</p>
         </div>
     </div>
 
@@ -168,6 +191,7 @@
     <div>
         {{ $students->links() }}
     </div>
+
     @if ($attendanceStudentId)
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-4">

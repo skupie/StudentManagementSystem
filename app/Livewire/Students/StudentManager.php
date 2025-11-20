@@ -19,6 +19,10 @@ class StudentManager extends Component
 
     #[Validate('required|in:all,active,inactive')]
     public string $statusFilter = 'active';
+    #[Validate('required')]
+    public string $classFilter = 'all';
+    #[Validate('required')]
+    public string $sectionFilter = 'all';
 
     #[Validate('array')]
     public array $form = [
@@ -63,7 +67,7 @@ class StudentManager extends Component
 
     public function render()
     {
-        $students = Student::query()
+        $filteredQuery = Student::query()
             ->withSum('feeInvoices as invoice_total_due', 'amount_due')
             ->withSum('feeInvoices as invoice_total_paid', 'amount_paid')
             ->when($this->search, fn ($query) => $query->where(function ($sub) {
@@ -73,13 +77,35 @@ class StudentManager extends Component
             ->when($this->statusFilter !== 'all', function ($query) {
                 $query->where('status', $this->statusFilter);
             })
+            ->when($this->classFilter !== 'all', function ($query) {
+                $query->where('class_level', $this->classFilter);
+            })
+            ->when($this->sectionFilter !== 'all', function ($query) {
+                $query->where('section', $this->sectionFilter);
+            })
+            ->when($this->classFilter !== 'all', function ($query) {
+                $query->where('class_level', $this->classFilter);
+            })
+            ->when($this->sectionFilter !== 'all', function ($query) {
+                $query->where('section', $this->sectionFilter);
+            });
+
+        $students = (clone $filteredQuery)
             ->orderBy('name')
             ->paginate(10);
 
+        $filteredTotal = (clone $filteredQuery)->count();
+
+        $classOptions = AcademyOptions::classes();
+        $sectionOptions = AcademyOptions::sections();
+
         return view('livewire.students.student-manager', [
             'students' => $students,
-            'classOptions' => AcademyOptions::classes(),
-            'sectionOptions' => AcademyOptions::sections(),
+            'classOptions' => $classOptions,
+            'sectionOptions' => $sectionOptions,
+            'filterClassOptions' => ['all' => 'All Classes'] + $classOptions,
+            'filterSectionOptions' => ['all' => 'All Sections'] + $sectionOptions,
+            'totalStudents' => $filteredTotal,
         ]);
     }
 
