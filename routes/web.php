@@ -16,9 +16,10 @@ Route::middleware([
     Route::view('/students', 'pages.students')->name('students.index');
     Route::get('/students/export/excel', StudentExportController::class)->middleware('role:admin')->name('students.export.excel');
     Route::view('/attendance', 'pages.attendance')->name('attendance.index');
+    Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin')->name('attendance.overview');
     Route::view('/fees', 'pages.fees')->name('fees.index');
     Route::view('/due-list', 'pages.due-list')->name('due-list.index');
-    Route::view('/notes', 'pages.notes')->middleware('role:admin,instructor')->name('notes.index');
+    Route::view('/notes', 'pages.notes')->middleware('role:instructor')->name('notes.index');
     Route::view('/weekly-exams', 'pages.weekly-exams')->name('weekly-exams.index');
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');

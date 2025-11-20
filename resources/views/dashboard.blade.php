@@ -142,39 +142,6 @@
                     </div>
                 </div>
 
-                {{-- Attendance & Exam Health --}}
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <h3 class="font-semibold text-gray-800">Attendance Today</h3>
-                        <div class="space-y-2">
-                            @forelse ($attendanceToday as $class => $statuses)
-                                <div class="flex justify-between text-sm border-b pb-1">
-                                    <span>{{ \App\Support\AcademyOptions::classLabel($class) }}</span>
-                                    <span>
-                                        P: {{ $statuses->firstWhere('status', 'present')->total ?? 0 }},
-                                        A: {{ $statuses->firstWhere('status', 'absent')->total ?? 0 }}
-                                    </span>
-                                </div>
-                            @empty
-                                <p class="text-sm text-gray-500">No attendance data for today.</p>
-                            @endforelse
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <h3 class="font-semibold text-gray-800">Exam Performance (Last 7 days)</h3>
-                        <div class="space-y-2">
-                            @forelse ($examHealth as $item)
-                                <div class="flex justify-between text-sm border-b pb-1">
-                                    <span>{{ \App\Support\AcademyOptions::classLabel($item->class_level) }} / {{ \App\Support\AcademyOptions::sectionLabel($item->section) }}</span>
-                                    <span>{{ number_format($item->average, 1) }}%</span>
-                                </div>
-                            @empty
-                                <p class="text-sm text-gray-500">No marks recorded in the last week.</p>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-
                 {{-- Quick Actions --}}
                 <div class="bg-white rounded-lg shadow p-4">
                     <h3 class="font-semibold text-gray-800 mb-3">Quick Actions</h3>

@@ -21,6 +21,11 @@
                     <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                         {{ __('Attendance') }}
                     </x-nav-link>
+                    @if (Auth::user()?->role === 'admin')
+                        <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
+                            {{ __('Attendance Log') }}
+                        </x-nav-link>
+                    @endif
                     <x-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
                         {{ __('Fees') }}
                     </x-nav-link>
@@ -30,7 +35,7 @@
                     <x-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
                         {{ __('Due List') }}
                     </x-nav-link>
-                    @if (in_array(Auth::user()?->role, ['admin', 'instructor']))
+                    @if (Auth::user()?->role === 'instructor')
                         <x-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
                             {{ __('Absence Notes') }}
                         </x-nav-link>
@@ -179,6 +184,11 @@
             <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                 {{ __('Attendance') }}
             </x-responsive-nav-link>
+            @if (Auth::user()?->role === 'admin')
+                <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
+                    {{ __('Attendance Log') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
                 {{ __('Fees') }}
             </x-responsive-nav-link>
@@ -188,7 +198,7 @@
             <x-responsive-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
                 {{ __('Due List') }}
             </x-responsive-nav-link>
-            @if (in_array(Auth::user()?->role, ['admin', 'instructor']))
+            @if (Auth::user()?->role === 'instructor')
                 <x-responsive-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
                     {{ __('Absence Notes') }}
                 </x-responsive-nav-link>
