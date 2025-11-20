@@ -164,6 +164,9 @@
                             </span>
                         </td>
                         <td class="px-4 py-2 text-right space-x-2">
+                            <a href="tel:{{ $student->phone_number }}" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50">
+                                {{ __('Call') }}
+                            </a>
                             <x-secondary-button wire:click="edit({{ $student->id }})" type="button" class="text-xs">
                                 {{ __('Edit') }}
                             </x-secondary-button>
