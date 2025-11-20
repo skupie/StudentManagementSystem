@@ -21,7 +21,7 @@
                     <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                         {{ __('Attendance') }}
                     </x-nav-link>
-                    @if (Auth::user()?->role === 'admin')
+                    @if (in_array(Auth::user()?->role, ['admin', 'director']))
                         <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                             {{ __('Attendance Log') }}
                         </x-nav-link>
@@ -184,7 +184,7 @@
             <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                 {{ __('Attendance') }}
             </x-responsive-nav-link>
-            @if (Auth::user()?->role === 'admin')
+            @if (in_array(Auth::user()?->role, ['admin', 'director']))
                 <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                     {{ __('Attendance Log') }}
                 </x-responsive-nav-link>

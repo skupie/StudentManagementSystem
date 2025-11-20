@@ -142,6 +142,9 @@
                     </div>
                 </div>
 
+                {{-- Inactive / Absent Students --}}
+                <livewire:dashboard.inactive-student-alert />
+
                 {{-- Quick Actions --}}
                 <div class="bg-white rounded-lg shadow p-4">
                     <h3 class="font-semibold text-gray-800 mb-3">Quick Actions</h3>

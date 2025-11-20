@@ -27,7 +27,7 @@ class UserManager extends Component
         return [
             'form.name' => ['required', 'string', 'max:255'],
             'form.email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'form.role' => ['required', 'in:admin,instructor'],
+            'form.role' => ['required', 'in:admin,director,instructor'],
             'form.password' => ['required', 'confirmed', Password::defaults()],
         ];
     }

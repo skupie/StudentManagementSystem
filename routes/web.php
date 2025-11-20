@@ -14,9 +14,9 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::view('/students', 'pages.students')->name('students.index');
-    Route::get('/students/export/excel', StudentExportController::class)->middleware('role:admin')->name('students.export.excel');
+    Route::get('/students/export/excel', StudentExportController::class)->middleware('role:admin,director')->name('students.export.excel');
     Route::view('/attendance', 'pages.attendance')->name('attendance.index');
-    Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin')->name('attendance.overview');
+    Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin,director')->name('attendance.overview');
     Route::view('/fees', 'pages.fees')->name('fees.index');
     Route::view('/due-list', 'pages.due-list')->name('due-list.index');
     Route::view('/notes', 'pages.notes')->middleware('role:instructor')->name('notes.index');
@@ -45,10 +45,10 @@ Route::middleware([
         ->middleware('role:admin,instructor')
         ->name('reports.weekly-exams.excel');
     Route::get('/reports/finance/excel', [ReportController::class, 'financeExcel'])
-        ->middleware('role:admin')
+        ->middleware('role:admin,director')
         ->name('reports.finance.excel');
 
     Route::get('/reports/finance/pdf', [ReportController::class, 'finance'])
-        ->middleware('role:admin')
+        ->middleware('role:admin,director')
         ->name('reports.finance.pdf');
 });

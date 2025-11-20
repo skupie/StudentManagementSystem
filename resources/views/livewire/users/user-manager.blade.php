@@ -18,6 +18,7 @@
                 <x-input-label value="Role" />
                 <select wire:model.defer="form.role" class="mt-1 block w-full rounded-md border-gray-300">
                     <option value="admin">System Admin</option>
+                    <option value="director">Director</option>
                     <option value="instructor">Lead Instructor</option>
                 </select>
                 <x-input-error :messages="$errors->get('form.role')" class="mt-1" />
@@ -64,7 +65,9 @@
                                 <div class="font-semibold text-gray-900">{{ $user->name }}</div>
                             </td>
                             <td class="px-4 py-2">{{ $user->email }}</td>
-                            <td class="px-4 py-2">{{ $user->role === 'admin' ? 'System Admin' : 'Lead Instructor' }}</td>
+                            <td class="px-4 py-2">
+                                {{ $user->role === 'admin' ? 'System Admin' : ($user->role === 'director' ? 'Director' : 'Lead Instructor') }}
+                            </td>
                             <td class="px-4 py-2">
                                 <span class="px-2 py-1 rounded-full text-xs {{ $user->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
                                     {{ $user->is_active ? 'Active' : 'Inactive' }}
