@@ -3,6 +3,7 @@
 namespace App\Livewire\Attendance;
 
 use App\Models\Attendance;
+use App\Models\Holiday;
 use App\Models\Student;
 use App\Models\StudentNote;
 use App\Support\AcademyOptions;
@@ -28,11 +29,13 @@ class AttendanceBoard extends Component
     public function render()
     {
         $isWeekend = $this->isWeekend();
+        $isHoliday = $this->isHoliday();
 
         $students = Student::query()
             ->where('status', 'active')
             ->where('class_level', $this->selectedClass)
             ->where('section', $this->selectedSection)
+            ->whereDate('enrollment_date', '<=', $this->attendanceDate)
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->orderBy('name')
             ->get();
@@ -50,13 +53,14 @@ class AttendanceBoard extends Component
             'sectionOptions' => AcademyOptions::sections(),
             'absenceCategories' => AcademyOptions::absenceCategories(),
             'isWeekend' => $isWeekend,
+            'isHoliday' => $isHoliday,
         ]);
     }
 
     public function markAttendance(int $studentId, string $status): void
     {
         abort_if(! in_array($status, ['present', 'absent'], true), 422);
-        if ($this->isWeekend()) {
+        if ($this->isWeekend() || $this->isHoliday()) {
             return;
         }
 
@@ -93,7 +97,7 @@ class AttendanceBoard extends Component
 
     public function saveNote(): void
     {
-        if ($this->isWeekend()) {
+        if ($this->isWeekend() || $this->isHoliday()) {
             return;
         }
 
@@ -143,5 +147,10 @@ class AttendanceBoard extends Component
     protected function isWeekend(): bool
     {
         return Carbon::parse($this->attendanceDate)->isFriday();
+    }
+
+    protected function isHoliday(): bool
+    {
+        return Holiday::whereDate('holiday_date', $this->attendanceDate)->exists();
     }
 }

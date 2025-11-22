@@ -17,6 +17,7 @@ Route::middleware([
     Route::get('/students/export/excel', StudentExportController::class)->middleware('role:admin,director')->name('students.export.excel');
     Route::view('/attendance', 'pages.attendance')->name('attendance.index');
     Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin,director')->name('attendance.overview');
+    Route::view('/holidays', 'pages.holidays')->middleware('role:admin,director')->name('holidays.index');
     Route::view('/fees', 'pages.fees')->name('fees.index');
     Route::view('/due-list', 'pages.due-list')->name('due-list.index');
     Route::view('/notes', 'pages.notes')->middleware('role:instructor')->name('notes.index');
@@ -24,6 +25,18 @@ Route::middleware([
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');
     Route::view('/users', 'pages.users')->middleware('role:admin')->name('users.index');
+    Route::get('/reports/attendance/pdf', [ReportController::class, 'attendancePdf'])
+        ->middleware('role:admin,director')
+        ->name('reports.attendance.pdf');
+    Route::get('/reports/attendance/excel', [ReportController::class, 'attendanceExcel'])
+        ->middleware('role:admin,director')
+        ->name('reports.attendance.excel');
+    Route::get('/reports/attendance/matrix/xlsx', [ReportController::class, 'attendanceMatrixXlsx'])
+        ->middleware('role:admin,director')
+        ->name('reports.attendance.matrix.xlsx');
+    Route::get('/reports/attendance/matrix', [ReportController::class, 'attendanceMatrixCsv'])
+        ->middleware('role:admin,director')
+        ->name('reports.attendance.matrix.csv');
 
     Route::get('/reports/weekly-exams/pdf', [ReportController::class, 'weeklyExams'])
         ->middleware('role:admin,instructor')

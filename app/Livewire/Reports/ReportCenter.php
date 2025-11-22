@@ -29,12 +29,18 @@ class ReportCenter extends Component
     public string $studentReportMonth;
     public ?int $studentReportStudentId = null;
 
+    public string $attendanceReportClass = 'all';
+    public string $attendanceReportSection = 'all';
+    public string $attendanceReportYear = '';
+    public string $attendanceReportMonth = '';
+
     public function mount(): void
     {
         $this->examDate = now()->format('Y-m-d');
         $this->financeRangeStart = now()->startOfMonth()->format('Y-m-d');
         $this->financeRangeEnd = now()->endOfMonth()->format('Y-m-d');
         $this->studentReportMonth = now()->format('Y-m');
+        $this->attendanceReportMonth = now()->format('Y-m');
     }
 
     public function render()
@@ -169,5 +175,15 @@ class ReportCenter extends Component
     public function updatedStudentReportSection(): void
     {
         $this->studentReportStudentId = null;
+    }
+
+    public function downloadAttendanceMatrix()
+    {
+        return redirect()->route('reports.attendance.matrix.xlsx', [
+            'class' => $this->attendanceReportClass,
+            'section' => $this->attendanceReportSection,
+            'year' => $this->attendanceReportYear,
+            'month' => $this->attendanceReportMonth,
+        ]);
     }
 }

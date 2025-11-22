@@ -1,10 +1,6 @@
 <div class="space-y-6">
     <div class="bg-white shadow rounded-lg p-4 space-y-4">
         <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-800">Attendance Snapshot</h3>
-                <p class="text-sm text-gray-500">{{ $dateLabel }}</p>
-            </div>
             <div class="grid md:grid-cols-3 gap-3 w-full lg:w-auto">
                 <div>
                     <x-input-label value="Date" />
@@ -27,9 +23,24 @@
                     </select>
                 </div>
             </div>
+            <div class="flex flex-wrap gap-2 justify-end">
+                <button type="button"
+                        onclick="window.location='{{ route('reports.attendance.excel', ['date' => $filterDate, 'class' => $filterClass, 'section' => $filterSection]) }}'"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                        style="background: linear-gradient(90deg, #059669 0%, #047857 100%); color: #fff;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4h16v16H4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m9 9 6 6m0-6-6 6" />
+                    </svg>
+                    Excel
+                </button>
+            </div>
         </div>
-
-        <div class="grid md:grid-cols-2 gap-4">
+        <div class="mt-2">
+            <h3 class="text-lg font-semibold text-gray-800">Attendance Snapshot</h3>
+            <p class="text-sm text-gray-500">{{ $dateLabel }}</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 mt-2">
             <div class="p-4 rounded-lg bg-green-50">
                 <div class="text-sm text-gray-500">Present</div>
                 <div class="text-3xl font-bold text-green-700 mt-1">{{ $totals['present'] ?? 0 }}</div>
@@ -75,9 +86,13 @@
                                 </span>
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700">
-                                <div class="font-semibold text-gray-800">{{ $record->category ?? 'Reason not set' }}</div>
+                                @php
+                                    $noteBody = $record->linkedNote->body ?? $record->note;
+                                    $noteCategory = $record->linkedNote->category ?? $record->category;
+                                @endphp
+                                <div class="font-semibold text-gray-800">{{ $noteCategory ?? 'Reason not set' }}</div>
                                 <div class="text-gray-600">
-                                    {{ $record->note ? $record->note : 'No additional note provided.' }}
+                                    {{ $noteBody ? $noteBody : 'No additional note provided.' }}
                                 </div>
                             </td>
                         </tr>

@@ -33,6 +33,7 @@ class StudentManager extends Component
         'academic_year' => '',
         'section' => 'science',
         'monthly_fee' => '',
+        'full_payment_override' => false,
         'enrollment_date' => '',
         'status' => 'active',
         'notes' => '',
@@ -59,6 +60,7 @@ class StudentManager extends Component
             'form.academic_year' => ['required', 'string', 'max:25'],
             'form.section' => ['required', 'in:' . implode(',', array_keys(AcademyOptions::sections()))],
             'form.monthly_fee' => ['required', 'numeric', 'min:0'],
+            'form.full_payment_override' => ['boolean'],
             'form.enrollment_date' => ['required', 'date'],
             'form.status' => ['required', 'in:active,inactive'],
             'form.notes' => ['nullable', 'string'],
@@ -68,8 +70,6 @@ class StudentManager extends Component
     public function render()
     {
         $filteredQuery = Student::query()
-            ->withSum('feeInvoices as invoice_total_due', 'amount_due')
-            ->withSum('feeInvoices as invoice_total_paid', 'amount_paid')
             ->when($this->search, fn ($query) => $query->where(function ($sub) {
                 $sub->where('name', 'like', '%' . $this->search . '%')
                     ->orWhere('phone_number', 'like', '%' . $this->search . '%');
@@ -93,6 +93,16 @@ class StudentManager extends Component
         $students = (clone $filteredQuery)
             ->orderBy('name')
             ->paginate(10);
+
+        $students->getCollection()->transform(function (Student $student) {
+            $student->ensureInvoicesThroughMonth(now());
+            $summary = $student->dueSummary();
+            $student->invoice_total_due = $summary['amount'];
+            $student->invoice_total_paid = $student->feeInvoices()->sum('amount_paid');
+            $student->outstanding = $summary['amount'];
+            $student->due_months = implode(', ', $summary['months']);
+            return $student;
+        });
 
         $filteredTotal = (clone $filteredQuery)->count();
 
@@ -142,6 +152,7 @@ class StudentManager extends Component
             'academic_year' => $student->academic_year,
             'section' => $student->section,
             'monthly_fee' => $student->monthly_fee,
+            'full_payment_override' => (bool) $student->full_payment_override,
             'enrollment_date' => optional($student->enrollment_date)->format('Y-m-d'),
             'status' => $student->status,
             'notes' => $student->notes,
@@ -179,6 +190,7 @@ class StudentManager extends Component
             'academic_year' => '',
             'section' => 'science',
             'monthly_fee' => '',
+            'full_payment_override' => false,
             'enrollment_date' => '',
             'status' => 'active',
             'notes' => '',

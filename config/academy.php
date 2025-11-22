@@ -78,4 +78,7 @@ return [
         'Utilities',
         'Miscellaneous',
     ],
+    'full_payment_exceptions' => [
+        // Add student IDs here for always-full payment handling
+    ],
 ];

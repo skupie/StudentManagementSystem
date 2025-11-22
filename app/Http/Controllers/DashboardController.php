@@ -23,6 +23,16 @@ class DashboardController extends Controller
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
 
+        // Make sure current month invoices exist (and are adjusted) so totals refresh without visiting Fees/Due pages
+        Student::chunkById(200, function ($students) use ($startOfMonth) {
+            foreach ($students as $student) {
+                $student->ensureInvoicesThroughMonth($startOfMonth);
+                if ($invoice = $student->feeInvoices()->where('billing_month', $startOfMonth->toDateString())->first()) {
+                    $student->adjustInvoiceForAttendance($invoice);
+                }
+            }
+        });
+
         $totalIncomeMonth = FeePayment::whereBetween('payment_date', [$startOfMonth, $endOfMonth])->sum('amount');
         $totalExpensesMonth = Expense::whereBetween('expense_date', [$startOfMonth, $endOfMonth])->sum('amount');
         $outstandingDues = FeeInvoice::whereColumn('amount_paid', '<', 'amount_due')

@@ -123,6 +123,43 @@
     </div>
 
     <div class="bg-white shadow rounded-lg p-4 space-y-3">
+        <h3 class="font-semibold text-gray-800">Attendance Matrix</h3>
+        <div class="grid md:grid-cols-4 gap-3">
+            <div>
+                <x-input-label value="Class" />
+                <select wire:model.live="attendanceReportClass" class="mt-1 block w-full rounded-md border-gray-300">
+                    <option value="all">All Classes</option>
+                    @foreach ($classOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <x-input-label value="Section" />
+                <select wire:model.live="attendanceReportSection" class="mt-1 block w-full rounded-md border-gray-300">
+                    <option value="all">All Sections</option>
+                    @foreach ($sectionOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <x-input-label value="Academic Year" />
+                <x-text-input type="text" wire:model.live="attendanceReportYear" class="mt-1 block w-full" placeholder="2024-2025" />
+            </div>
+            <div>
+                <x-input-label value="Month" />
+                <x-text-input type="month" wire:model.live="attendanceReportMonth" class="mt-1 block w-full" />
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <x-secondary-button type="button" wire:click="downloadAttendanceMatrix" class="justify-center bg-emerald-200 text-black hover:bg-emerald-300 border-emerald-300">
+                Excel
+            </x-secondary-button>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-4 space-y-3">
         <h3 class="font-semibold text-gray-800">Individual Weekly Exam Report</h3>
         <div class="grid md:grid-cols-4 gap-3">
             <div>

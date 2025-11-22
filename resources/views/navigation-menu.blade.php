@@ -25,6 +25,9 @@
                         <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                             {{ __('Attendance Log') }}
                         </x-nav-link>
+                        <x-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
+                            {{ __('Holidays') }}
+                        </x-nav-link>
                     @endif
                     <x-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
                         {{ __('Fees') }}
@@ -187,6 +190,9 @@
             @if (in_array(Auth::user()?->role, ['admin', 'director']))
                 <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                     {{ __('Attendance Log') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
+                    {{ __('Holidays') }}
                 </x-responsive-nav-link>
             @endif
             <x-responsive-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">

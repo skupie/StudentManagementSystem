@@ -20,6 +20,7 @@ class Student extends Model
         'academic_year',
         'section',
         'monthly_fee',
+        'full_payment_override',
         'enrollment_date',
         'status',
         'notes',
@@ -29,6 +30,7 @@ class Student extends Model
     protected $casts = [
         'enrollment_date' => 'date',
         'monthly_fee' => 'decimal:2',
+        'full_payment_override' => 'boolean',
     ];
 
     public function creator(): BelongsTo
@@ -151,6 +153,25 @@ class Student extends Model
             return 0;
         }
 
+        // First-month admission between 8th-12th counts as full
+        if ($this->enrollment_date) {
+            $isSameMonth = $this->enrollment_date->isSameMonth($month);
+            $admitDay = (int) $this->enrollment_date->format('d');
+            if ($isSameMonth && $admitDay >= 8 && $admitDay <= 12) {
+                return round($this->monthly_fee, 2);
+            }
+        }
+
+        // Exception list: always full payment
+        if ($this->full_payment_override) {
+            return round($this->monthly_fee, 2);
+        }
+
+        $fullPaymentExceptions = collect(config('academy.full_payment_exceptions', []))->filter()->map(fn ($id) => (int) $id)->toArray();
+        if (in_array((int) $this->id, $fullPaymentExceptions, true)) {
+            return round($this->monthly_fee, 2);
+        }
+
         $attendanceCount = $this->attendanceCountForMonth($month);
 
         if ($attendanceCount <= 6) {
@@ -169,9 +190,17 @@ class Student extends Model
         $start = $month->copy()->startOfMonth();
         $end = $month->copy()->endOfMonth();
 
-        return $this->attendances()
+        $presentCount = $this->attendances()
             ->where('status', 'present')
             ->whereBetween('attendance_date', [$start, $end])
             ->count();
+
+        // Holidays count toward payment thresholds even though attendance is not taken
+        if (class_exists(\App\Models\Holiday::class)) {
+            $holidayCount = \App\Models\Holiday::whereBetween('holiday_date', [$start, $end])->count();
+            $presentCount += $holidayCount;
+        }
+
+        return $presentCount;
     }
 }

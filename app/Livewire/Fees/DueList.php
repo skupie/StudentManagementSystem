@@ -105,6 +105,7 @@ class DueList extends Component
         }
 
         $this->settlement[$studentId] = '';
+        $this->dispatch('$refresh');
     }
 
     public function exportPdf()

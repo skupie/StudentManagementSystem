@@ -109,6 +109,14 @@
             </select>
             <x-input-error :messages="$errors->get('form.status')" class="mt-1" />
         </div>
+        <div>
+            <x-input-label value="Always Charge Full" />
+            <div class="flex items-center mt-2">
+                <input type="checkbox" wire:model.defer="form.full_payment_override" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="ml-2 text-sm text-gray-600">Ignore attendance rules; always bill full month</span>
+            </div>
+            <x-input-error :messages="$errors->get('form.full_payment_override')" class="mt-1" />
+        </div>
 
         <div class="md:col-span-3">
             <x-input-label value="Notes" />

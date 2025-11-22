@@ -33,6 +33,10 @@
         <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4">
             Friday is treated as a weekend. Attendance cannot be recorded on this day.
         </div>
+    @elseif ($isHoliday)
+        <div class="bg-pink-50 border border-pink-200 text-pink-800 rounded-lg p-4">
+            Today is marked as a holiday. Attendance cannot be recorded on this day.
+        </div>
     @else
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
