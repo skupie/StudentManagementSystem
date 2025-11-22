@@ -13,9 +13,9 @@ use Livewire\Component;
 class ReportCenter extends Component
 {
     public string $examClass = 'hsc_1';
-    public string $examSection = 'science';
+    public string $examSection = 'all';
     public string $examSubject = 'all';
-    public string $examDate = '';
+    public string $examMonth = '';
 
     public string $dueClass = 'all';
     public string $dueSection = 'all';
@@ -36,7 +36,7 @@ class ReportCenter extends Component
 
     public function mount(): void
     {
-        $this->examDate = now()->format('Y-m-d');
+        $this->examMonth = now()->format('Y-m');
         $this->financeRangeStart = now()->startOfMonth()->format('Y-m-d');
         $this->financeRangeEnd = now()->endOfMonth()->format('Y-m-d');
         $this->studentReportMonth = now()->format('Y-m');
@@ -54,8 +54,15 @@ class ReportCenter extends Component
         $outstanding = FeeInvoice::outstanding()->get()->sum(fn ($invoice) => $invoice->amount_due - $invoice->amount_paid);
         $weeklyMarks = WeeklyExamMark::count();
 
-        $subjectOptions = AcademyOptions::subjectsForSection($this->examSection);
-        if ($this->examSubject !== 'all' && ! array_key_exists($this->examSubject, $subjectOptions)) {
+        $subjectOptions = ['all' => 'All Subjects'];
+        if ($this->examSection === 'all') {
+            foreach (AcademyOptions::sections() as $key => $label) {
+                $subjectOptions += AcademyOptions::subjectsForSection($key);
+            }
+        } else {
+            $subjectOptions += AcademyOptions::subjectsForSection($this->examSection);
+        }
+        if (! array_key_exists($this->examSubject, $subjectOptions)) {
             $this->examSubject = 'all';
         }
 
@@ -75,7 +82,7 @@ class ReportCenter extends Component
             'weeklyMarks' => $weeklyMarks,
             'classOptions' => AcademyOptions::classes(),
             'sectionOptions' => AcademyOptions::sections(),
-            'subjectOptions' => ['all' => 'All Subjects'] + $subjectOptions,
+            'subjectOptions' => $subjectOptions,
             'studentReportOptions' => $studentReportOptions,
         ]);
     }
@@ -85,7 +92,7 @@ class ReportCenter extends Component
         return redirect()->route('reports.weekly-exams.pdf', [
             'class' => $this->examClass,
             'section' => $this->examSection,
-            'date' => $this->examDate,
+            'month' => $this->examMonth,
             'subject' => $this->examSubject,
         ]);
     }
@@ -95,7 +102,7 @@ class ReportCenter extends Component
         return redirect()->route('reports.weekly-exams.excel', [
             'class' => $this->examClass,
             'section' => $this->examSection,
-            'date' => $this->examDate,
+            'month' => $this->examMonth,
             'subject' => $this->examSubject,
         ]);
     }

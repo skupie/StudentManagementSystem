@@ -26,7 +26,7 @@ class WeeklyExamBoard extends Component
         'subject' => '',
         'exam_date' => '',
         'marks_obtained' => '',
-        'max_marks' => 100,
+        'max_marks' => 30,
         'remarks' => '',
     ];
 
@@ -140,16 +140,19 @@ class WeeklyExamBoard extends Component
     public function resetForm(): void
     {
         $this->editingId = null;
+        $lastClass = $this->form['class_level'] ?: $this->classFilter;
+        $lastSection = $this->form['section'] ?: $this->sectionFilter;
+        $preferredSubject = $this->form['subject'] ?: ($this->subjectFilter !== 'all' ? $this->subjectFilter : '');
+        $subject = $preferredSubject ?: $this->defaultSubjectForSection($lastSection);
+
         $this->form = [
             'student_id' => '',
-            'class_level' => $this->classFilter,
-            'section' => $this->sectionFilter,
-            'subject' => $this->subjectFilter !== 'all'
-                ? $this->subjectFilter
-                : $this->defaultSubjectForSection($this->sectionFilter),
+            'class_level' => $lastClass,
+            'section' => $lastSection,
+            'subject' => $subject,
             'exam_date' => now()->format('Y-m-d'),
             'marks_obtained' => '',
-            'max_marks' => 100,
+            'max_marks' => 30,
             'remarks' => '',
         ];
         $this->ensureFormSubject();

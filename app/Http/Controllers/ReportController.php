@@ -25,74 +25,116 @@ class ReportController extends Controller
     public function weeklyExams(Request $request)
     {
         $class = $request->input('class', 'hsc_1');
-        $section = $request->input('section', 'science');
-        $dateInput = $request->input('date');
-        $date = $dateInput ? Carbon::parse($dateInput) : null;
+        $section = $request->input('section', 'all');
         $subject = $request->input('subject', 'all');
+        $monthInput = $request->input('month');
+        $dateInput = $request->input('date');
 
-        $marks = WeeklyExamMark::with('student')
-            ->where('class_level', $class)
-            ->where('section', $section)
-            ->when($subject !== 'all', fn ($q) => $q->where('subject', $subject))
-            ->when($date, fn ($q) => $q->whereDate('exam_date', $date))
-            ->orderBy('exam_date')
-            ->get();
+        if ($monthInput) {
+            $monthDate = Carbon::createFromFormat('Y-m', $monthInput);
+            $rangeStart = $monthDate->copy()->startOfMonth();
+            $rangeEnd = $monthDate->copy()->endOfMonth();
+            $periodLabel = $monthDate->format('F Y');
+        } elseif ($dateInput) {
+            $singleDate = Carbon::parse($dateInput)->startOfDay();
+            $rangeStart = $singleDate->copy()->startOfDay();
+            $rangeEnd = $singleDate->copy()->endOfDay();
+            $periodLabel = $singleDate->format('d M Y');
+        } else {
+            $monthDate = now()->startOfMonth();
+            $rangeStart = $monthDate->copy()->startOfMonth();
+            $rangeEnd = $monthDate->copy()->endOfMonth();
+            $periodLabel = $monthDate->format('F Y');
+        }
+
+        $reportData = $this->buildWeeklyExamMatrix($class, $section, $subject, $rangeStart, $rangeEnd);
 
         $pdf = Pdf::loadView('reports.pdf.weekly-exams', [
-            'marks' => $marks,
             'classLabel' => AcademyOptions::classLabel($class),
-            'sectionLabel' => AcademyOptions::sectionLabel($section),
-            'date' => $date,
+            'sectionLabel' => $section === 'all' ? 'All' : AcademyOptions::sectionLabel($section),
+            'periodLabel' => $periodLabel,
             'subject' => $subject,
             'subjectLabel' => $subject === 'all' ? 'All Subjects' : AcademyOptions::subjectLabel($subject),
+            'subjects' => $reportData['subjects'],
+            'rows' => $reportData['rows'],
         ])->setPaper('a4', 'portrait');
 
         return $pdf->download("weekly-exams-{$class}-{$section}.pdf");
     }
+
     public function weeklyExamsExcel(Request $request)
     {
         $class = $request->input('class', 'hsc_1');
-        $section = $request->input('section', 'science');
-        $dateInput = $request->input('date');
-        $date = $dateInput ? Carbon::parse($dateInput) : null;
+        $section = $request->input('section', 'all');
         $subject = $request->input('subject', 'all');
+        $monthInput = $request->input('month');
+        $dateInput = $request->input('date');
 
-        $marks = WeeklyExamMark::with('student')
-            ->where('class_level', $class)
-            ->where('section', $section)
-            ->when($subject !== 'all', fn ($q) => $q->where('subject', $subject))
-            ->when($date, fn ($q) => $q->whereDate('exam_date', $date))
-            ->orderBy('exam_date')
-            ->get();
+        if ($monthInput) {
+            $monthDate = Carbon::createFromFormat('Y-m', $monthInput);
+            $rangeStart = $monthDate->copy()->startOfMonth();
+            $rangeEnd = $monthDate->copy()->endOfMonth();
+        } elseif ($dateInput) {
+            $singleDate = Carbon::parse($dateInput)->startOfDay();
+            $rangeStart = $singleDate->copy()->startOfDay();
+            $rangeEnd = $singleDate->copy()->endOfDay();
+        } else {
+            $monthDate = now()->startOfMonth();
+            $rangeStart = $monthDate->copy()->startOfMonth();
+            $rangeEnd = $monthDate->copy()->endOfMonth();
+        }
 
-        $filename = 'weekly-exams-' . now()->format('Ymd-His') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
-        $columns = ['Student', 'Class', 'Section', 'Subject', 'Exam Date', 'Marks', 'Max Marks', 'Remarks'];
+        $reportData = $this->buildWeeklyExamMatrix($class, $section, $subject, $rangeStart, $rangeEnd);
 
-        $callback = function () use ($columns, $marks) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, $columns);
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->removeSheetByIndex(0);
 
-            foreach ($marks as $mark) {
-                fputcsv($handle, [
-                    $mark->student->name,
-                    AcademyOptions::classLabel($mark->class_level),
-                    AcademyOptions::sectionLabel($mark->section),
-                    AcademyOptions::subjectLabel($mark->subject),
-                    optional($mark->exam_date)->format('d M Y'),
-                    $mark->marks_obtained,
-                    $mark->max_marks,
-                    $mark->remarks,
-                ]);
+        $sectionsToProcess = $section === 'all'
+            ? Student::query()
+                ->where('status', 'active')
+                ->where('class_level', $class)
+                ->pluck('section')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all()
+            : [$section];
+
+        if (empty($sectionsToProcess)) {
+            $sectionsToProcess = [$section === 'all' ? 'all' : $section];
+        }
+
+        $hasSheet = false;
+        foreach ($sectionsToProcess as $sectionKey) {
+            if ($section === 'all' && $sectionKey === 'all') {
+                continue;
             }
 
-            fclose($handle);
-        };
+            $matrix = $this->buildWeeklyExamMatrix($class, $sectionKey, $subject, $rangeStart, $rangeEnd);
+            if (empty($matrix['subjects']) || empty($matrix['rows'])) {
+                continue;
+            }
 
-        return response()->streamDownload($callback, $filename, $headers);
+            $sheetName = sprintf('%s - %s', AcademyOptions::classLabel($class), AcademyOptions::sectionLabel($sectionKey));
+            $this->addWeeklyExamSheet($spreadsheet, $sheetName, $matrix);
+            $hasSheet = true;
+        }
+
+        if (! $hasSheet) {
+            $fallback = $spreadsheet->createSheet();
+            $fallback->setTitle('Summary');
+            $fallback->setCellValue('A1', 'No data available for the selected filters.');
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'weekly-exams-' . $class . '-' . $section . '-' . now()->format('Ymd-His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     public function dueList(Request $request)
@@ -176,40 +218,51 @@ class ReportController extends Controller
             ->orderBy('expense_date')
             ->get();
 
-        $filename = 'finance-ledger-' . now()->format('Ymd-His') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $headers = ['Type', 'Date', 'Description', 'Amount', 'Receipt'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
 
-        $callback = function () use ($payments, $expenses) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Type', 'Date', 'Description', 'Amount', 'Receipt']);
+        $row = 2;
+        foreach ($payments as $payment) {
+            $sheet->fromArray([
+                'Income',
+                optional($payment->payment_date)->format('d M Y'),
+                $payment->student->name . ' (' . AcademyOptions::classLabel($payment->student->class_level ?? '') . ', ' . AcademyOptions::sectionLabel($payment->student->section ?? '') . ') - ' . ($payment->payment_mode ?? 'N/A'),
+                (float) $payment->amount,
+                $payment->receipt_number ?? 'N/A',
+            ], null, 'A' . $row);
+            $row++;
+        }
 
-            foreach ($payments as $payment) {
-                fputcsv($handle, [
-                    'Income',
-                    optional($payment->payment_date)->format('d M Y'),
-                    $payment->student->name . ' (' . AcademyOptions::classLabel($payment->student->class_level ?? '') . ', ' . AcademyOptions::sectionLabel($payment->student->section ?? '') . ') - ' . ($payment->payment_mode ?? 'N/A'),
-                    number_format($payment->amount, 2),
-                    $payment->receipt_number ?? 'N/A',
-                ]);
-            }
+        foreach ($expenses as $expense) {
+            $sheet->fromArray([
+                'Expense',
+                optional($expense->expense_date)->format('d M Y'),
+                $expense->category . ($expense->description ? ' - ' . $expense->description : ''),
+                (float) $expense->amount,
+                '',
+            ], null, 'A' . $row);
+            $row++;
+        }
 
-            foreach ($expenses as $expense) {
-                fputcsv($handle, [
-                    'Expense',
-                    optional($expense->expense_date)->format('d M Y'),
-                    $expense->category . ($expense->description ? ' - ' . $expense->description : ''),
-                    number_format($expense->amount, 2),
-                    '',
-                ]);
-            }
+        $sheet->getStyle('D2:D' . max(2, $row - 1))
+            ->getNumberFormat()
+            ->setFormatCode('#,##0.00');
 
-            fclose($handle);
-        };
+        foreach (range('A', 'E') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
-        return response()->streamDownload($callback, $filename, $headers);
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'finance-ledger-' . now()->format('Ymd-His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     public function dueListExcel(Request $request)
@@ -648,5 +701,133 @@ class ReportController extends Controller
         }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    protected function buildWeeklyExamMatrix(string $class, string $section, string $subjectFilter, Carbon $start, Carbon $end): array
+    {
+        $students = Student::query()
+            ->where('status', 'active')
+            ->where('class_level', $class)
+            ->when($section !== 'all', fn ($q) => $q->where('section', $section))
+            ->orderBy('name')
+            ->get();
+
+        $marks = WeeklyExamMark::query()
+            ->where('class_level', $class)
+            ->when($section !== 'all', fn ($q) => $q->where('section', $section))
+            ->when($subjectFilter !== 'all', fn ($q) => $q->where('subject', $subjectFilter))
+            ->whereBetween('exam_date', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->get()
+            ->groupBy('student_id');
+
+        if ($subjectFilter === 'all') {
+            $subjectCodes = $marks->flatMap(fn ($group) => $group->pluck('subject'))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        } else {
+            $subjectCodes = [$subjectFilter];
+        }
+
+        $subjects = [];
+        foreach ($subjectCodes as $code) {
+            $subjects[$code] = AcademyOptions::subjectLabel($code);
+        }
+
+        if (empty($subjects)) {
+            return ['subjects' => [], 'rows' => []];
+        }
+
+        $rows = [];
+        foreach ($students as $student) {
+            $studentMarks = $marks->get($student->id, collect());
+            $cells = [];
+            $totalObtained = 0;
+            foreach ($subjects as $code => $label) {
+                $mark = $studentMarks instanceof \Illuminate\Support\Collection
+                    ? $studentMarks->where('subject', $code)->sortBy('exam_date')->last()
+                    : null;
+
+                if ($mark) {
+                    $cells[$code] = [
+                        'text' => $mark->marks_obtained . ' / ' . $mark->max_marks,
+                        'absent' => false,
+                    ];
+                    $totalObtained += $mark->marks_obtained;
+                } else {
+                    $cells[$code] = [
+                        'text' => 'A',
+                        'absent' => true,
+                    ];
+                }
+            }
+
+            $rows[] = [
+                'student' => $student,
+                'subjects' => $cells,
+                'total' => $totalObtained,
+            ];
+        }
+
+        return [
+            'subjects' => $subjects,
+            'rows' => $rows,
+        ];
+    }
+
+    protected function addWeeklyExamSheet(Spreadsheet $spreadsheet, string $title, array $data): void
+    {
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle($this->sanitizeSheetTitle($title));
+
+        if (empty($data['subjects']) || empty($data['rows'])) {
+            $sheet->setCellValue('A1', 'No data available for this section.');
+            return;
+        }
+
+        $headers = array_merge(['Student'], array_values($data['subjects']), ['Total']);
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:' . Coordinate::stringFromColumnIndex(count($headers)) . '1')
+            ->getFont()->setBold(true);
+
+        $rowIndex = 2;
+        foreach ($data['rows'] as $row) {
+            $line = [$row['student']->name];
+            foreach ($data['subjects'] as $code => $label) {
+                $line[] = $row['subjects'][$code]['text'];
+            }
+            $line[] = $row['total'];
+
+            $sheet->fromArray($line, null, 'A' . $rowIndex);
+
+            $colIndex = 2;
+            foreach ($data['subjects'] as $code => $label) {
+                $cell = Coordinate::stringFromColumnIndex($colIndex) . $rowIndex;
+                if ($row['subjects'][$code]['absent']) {
+                    $sheet->getStyle($cell)->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB('FFF87171');
+                    $sheet->getStyle($cell)->getFont()->getColor()->setARGB('FFB91C1C');
+                }
+                $sheet->getStyle($cell)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $colIndex++;
+            }
+            // Total column styling
+            $totalCell = Coordinate::stringFromColumnIndex($colIndex) . $rowIndex;
+            $sheet->getStyle($totalCell)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $rowIndex++;
+        }
+
+        foreach (range(1, count($headers)) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+    }
+
+    protected function sanitizeSheetTitle(string $title): string
+    {
+        $sanitized = preg_replace('/[^A-Za-z0-9 \-]/', '', $title) ?? 'Sheet';
+        return substr($sanitized, 0, 31) ?: 'Sheet';
     }
 }

@@ -24,6 +24,9 @@ Route::middleware([
     Route::view('/weekly-exams', 'pages.weekly-exams')->name('weekly-exams.index');
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');
+    Route::view('/leaderboard', 'pages.leaderboard')
+        ->middleware('role:admin,director,instructor')
+        ->name('leaderboard.index');
     Route::view('/users', 'pages.users')->middleware('role:admin')->name('users.index');
     Route::get('/reports/attendance/pdf', [ReportController::class, 'attendancePdf'])
         ->middleware('role:admin,director')

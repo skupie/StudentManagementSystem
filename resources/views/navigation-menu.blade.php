@@ -51,6 +51,11 @@
                             {{ __('Ledger') }}
                         </x-nav-link>
                     @endif
+                    @if (in_array(Auth::user()?->role, ['admin', 'director', 'instructor']))
+                        <x-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
+                            {{ __('Leaderboard') }}
+                        </x-nav-link>
+                    @endif
                     <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
                         {{ __('Reports') }}
                     </x-nav-link>
@@ -215,6 +220,11 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link href="{{ route('ledger.index') }}" :active="request()->routeIs('ledger.index')">
                     {{ __('Ledger') }}
+                </x-responsive-nav-link>
+            @endif
+            @if (in_array(Auth::user()?->role, ['admin', 'director', 'instructor']))
+                <x-responsive-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
+                    {{ __('Leaderboard') }}
                 </x-responsive-nav-link>
             @endif
             <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">

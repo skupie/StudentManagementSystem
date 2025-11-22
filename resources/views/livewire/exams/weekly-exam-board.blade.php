@@ -34,11 +34,6 @@
                 <x-text-input type="text" wire:model.live.debounce.300ms="search" class="mt-1 block w-full" placeholder="Name" />
             </div>
         </div>
-        <div class="text-right">
-            <x-secondary-button type="button" wire:click="exportPdf">
-                Download PDF
-            </x-secondary-button>
-        </div>
     </div>
 
     <div class="bg-white shadow rounded-lg p-4 space-y-4">

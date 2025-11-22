@@ -40,6 +40,7 @@
             <div>
                 <x-input-label value="Section" />
                 <select wire:model.live="examSection" class="mt-1 block w-full rounded-md border-gray-300">
+                    <option value="all">All Sections</option>
                     @foreach ($sectionOptions as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
@@ -54,8 +55,8 @@
                 </select>
             </div>
             <div>
-                <x-input-label value="Exam Date" />
-                <x-text-input type="date" wire:model.live="examDate" class="mt-1 block w-full" />
+                <x-input-label value="Exam Month" />
+                <x-text-input type="month" wire:model.live="examMonth" class="mt-1 block w-full" />
             </div>
             <div class="flex gap-2">
                 <x-primary-button type="button" wire:click="downloadExamReport" class="w-full justify-center">
