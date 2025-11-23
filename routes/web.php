@@ -42,23 +42,23 @@ Route::middleware([
         ->name('reports.attendance.matrix.csv');
 
     Route::get('/reports/weekly-exams/pdf', [ReportController::class, 'weeklyExams'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.weekly-exams.pdf');
     Route::get('/reports/weekly-exams/student/pdf', [ReportController::class, 'weeklyExamsStudent'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.weekly-exams.student.pdf');
     Route::get('/reports/weekly-exams/student/excel', [ReportController::class, 'weeklyExamsStudentExcel'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.weekly-exams.student.excel');
 
     Route::get('/reports/due-list/pdf', [ReportController::class, 'dueList'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.due-list.pdf');
     Route::get('/reports/due-list/excel', [ReportController::class, 'dueListExcel'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.due-list.excel');
     Route::get('/reports/weekly-exams/excel', [ReportController::class, 'weeklyExamsExcel'])
-        ->middleware('role:admin,instructor')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.weekly-exams.excel');
     Route::get('/reports/finance/excel', [ReportController::class, 'financeExcel'])
         ->middleware('role:admin,director')
