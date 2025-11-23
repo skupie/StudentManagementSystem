@@ -11,54 +11,73 @@
                 </div>
 
                 <!-- Navigation Links -->
+                @php($navRole = Auth::user()?->role)
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                    <x-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.index')">
-                        {{ __('Students') }}
-                    </x-nav-link>
-                    <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
-                        {{ __('Attendance') }}
-                    </x-nav-link>
-                    @if (in_array(Auth::user()?->role, ['admin', 'director']))
-                        <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
-                            {{ __('Attendance Log') }}
+                    @if ($navRole === 'assistant')
+                        <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
                         </x-nav-link>
-                        <x-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
-                            {{ __('Holidays') }}
+                        <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
+                            {{ __('Attendance') }}
                         </x-nav-link>
-                    @endif
-                    <x-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
-                        {{ __('Fees') }}
-                    </x-nav-link>
-                    <x-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
-                        {{ __('Weekly Exams') }}
-                    </x-nav-link>
-                    <x-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
-                        {{ __('Due List') }}
-                    </x-nav-link>
-                    @if (Auth::user()?->role === 'instructor')
                         <x-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
                             {{ __('Absence Notes') }}
                         </x-nav-link>
-                    @endif
-                    @if (Auth::user()?->role === 'admin')
-                        <x-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.index')">
-                            {{ __('Team Members') }}
+                        <x-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
+                            {{ __('Weekly Exams') }}
                         </x-nav-link>
-                        <x-nav-link href="{{ route('ledger.index') }}" :active="request()->routeIs('ledger.index')">
-                            {{ __('Ledger') }}
+                        <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
+                    @else
+                        <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.index')">
+                            {{ __('Students') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
+                            {{ __('Attendance') }}
+                        </x-nav-link>
+                        @if (in_array($navRole, ['admin', 'director']))
+                            <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
+                                {{ __('Attendance Log') }}
+                            </x-nav-link>
+                            <x-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
+                                {{ __('Holidays') }}
+                            </x-nav-link>
+                        @endif
+                        <x-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
+                            {{ __('Fees') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
+                            {{ __('Weekly Exams') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
+                            {{ __('Due List') }}
+                        </x-nav-link>
+                        @if (in_array($navRole, ['instructor', 'assistant']))
+                            <x-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
+                                {{ __('Absence Notes') }}
+                            </x-nav-link>
+                        @endif
+                        @if ($navRole === 'admin')
+                            <x-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.index')">
+                                {{ __('Team Members') }}
+                            </x-nav-link>
+                            <x-nav-link href="{{ route('ledger.index') }}" :active="request()->routeIs('ledger.index')">
+                                {{ __('Ledger') }}
+                            </x-nav-link>
+                        @endif
+                        @if (in_array($navRole, ['admin', 'director', 'instructor', 'assistant']))
+                            <x-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
+                                {{ __('Leaderboard') }}
+                            </x-nav-link>
+                        @endif
+                        <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
+                            {{ __('Reports') }}
                         </x-nav-link>
                     @endif
-                    @if (in_array(Auth::user()?->role, ['admin', 'director', 'instructor']))
-                        <x-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
-                            {{ __('Leaderboard') }}
-                        </x-nav-link>
-                    @endif
-                    <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
-                        {{ __('Reports') }}
-                    </x-nav-link>
                 </div>
             </div>
 
@@ -183,53 +202,71 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.index')">
-                {{ __('Students') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
-                {{ __('Attendance') }}
-            </x-responsive-nav-link>
-            @if (in_array(Auth::user()?->role, ['admin', 'director']))
-                <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
-                    {{ __('Attendance Log') }}
+            @if ($navRole === 'assistant')
+                <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                    {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
-                    {{ __('Holidays') }}
+                <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
+                    {{ __('Attendance') }}
                 </x-responsive-nav-link>
-            @endif
-            <x-responsive-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
-                {{ __('Fees') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
-                {{ __('Weekly Exams') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
-                {{ __('Due List') }}
-            </x-responsive-nav-link>
-            @if (Auth::user()?->role === 'instructor')
                 <x-responsive-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
                     {{ __('Absence Notes') }}
                 </x-responsive-nav-link>
-            @endif
-            @if (Auth::user()?->role === 'admin')
-                <x-responsive-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.index')">
-                    {{ __('Team Members') }}
+                <x-responsive-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
+                    {{ __('Weekly Exams') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link href="{{ route('ledger.index') }}" :active="request()->routeIs('ledger.index')">
-                    {{ __('Ledger') }}
+                <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
+                    {{ __('Reports') }}
+                </x-responsive-nav-link>
+            @else
+                <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.index')">
+                    {{ __('Students') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
+                    {{ __('Attendance') }}
+                </x-responsive-nav-link>
+                @if (in_array($navRole, ['admin', 'director']))
+                    <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
+                        {{ __('Attendance Log') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
+                        {{ __('Holidays') }}
+                    </x-responsive-nav-link>
+                @endif
+                <x-responsive-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">
+                    {{ __('Fees') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.index')">
+                    {{ __('Weekly Exams') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('due-list.index') }}" :active="request()->routeIs('due-list.index')">
+                    {{ __('Due List') }}
+                </x-responsive-nav-link>
+                @if (in_array($navRole, ['instructor', 'assistant']))
+                    <x-responsive-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.index')">
+                        {{ __('Absence Notes') }}
+                    </x-responsive-nav-link>
+                @endif
+                @if ($navRole === 'admin')
+                    <x-responsive-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.index')">
+                        {{ __('Team Members') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link href="{{ route('ledger.index') }}" :active="request()->routeIs('ledger.index')">
+                        {{ __('Ledger') }}
+                    </x-responsive-nav-link>
+                @endif
+                @if (in_array($navRole, ['admin', 'director', 'instructor', 'assistant']))
+                    <x-responsive-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
+                        {{ __('Leaderboard') }}
+                    </x-responsive-nav-link>
+                @endif
+                <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
+                    {{ __('Reports') }}
                 </x-responsive-nav-link>
             @endif
-            @if (in_array(Auth::user()?->role, ['admin', 'director', 'instructor']))
-                <x-responsive-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.index')">
-                    {{ __('Leaderboard') }}
-                </x-responsive-nav-link>
-            @endif
-            <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
-                {{ __('Reports') }}
-            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->

@@ -163,12 +163,95 @@
                         <p class="text-xs text-gray-500 mb-1">Students with dues older than 2 months</p>
                         <ul class="text-sm space-y-1">
                             @forelse ($notifications['overdueStudents'] as $student)
-                                <li>{{ $student->name }} — {{ $formatter($student->feeInvoices->sum(fn($invoice) => max(0, $invoice->amount_due - $invoice->amount_paid))) }}</li>
+                                <li>{{ $student->name }} – {{ $formatter($student->feeInvoices->sum(fn($invoice) => max(0, $invoice->amount_due - $invoice->amount_paid))) }}</li>
                             @empty
                                 <li class="text-gray-500 text-sm">No overdue students 🎉</li>
                             @endforelse
                         </ul>
                     </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">Instructors pending weekly exam updates</p>
+                        <ul class="text-sm space-y-1">
+                            @forelse ($notifications['pendingInstructors'] as $name)
+                                <li>{{ $name }}</li>
+                            @empty
+                                <li class="text-gray-500 text-sm">All instructors submitted this week.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+            @elseif ($user->isAssistant())
+                @php
+                    $hscOneCount = $classDistribution['hsc_1'] ?? 0;
+                    $hscTwoCount = $classDistribution['hsc_2'] ?? 0;
+                @endphp
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-white rounded-lg shadow">
+                        <p class="text-sm text-gray-500">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-800">{{ $studentCounts['total'] }}</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow">
+                        <p class="text-sm text-gray-500">Active</p>
+                        <p class="text-2xl font-bold text-green-600">{{ $studentCounts['active'] }}</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow">
+                        <p class="text-sm text-gray-500">Inactive</p>
+                        <p class="text-2xl font-bold text-gray-600">{{ $studentCounts['inactive'] }}</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg shadow-sm">
+                        <p class="text-sm text-gray-600">HSC 1st Year</p>
+                        <p class="text-2xl font-bold text-blue-700 mt-1">{{ $hscOneCount }}</p>
+                    </div>
+                    <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm">
+                        <p class="text-sm text-gray-600">HSC 2nd Year</p>
+                        <p class="text-2xl font-bold text-indigo-700 mt-1">{{ $hscTwoCount }}</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-semibold text-gray-800">Exam Performance Snapshot</h3>
+                    <div class="space-y-2 mt-3">
+                        @forelse ($examHealth as $item)
+                            <div class="flex justify-between text-sm border-b pb-1">
+                                <span>{{ \App\Support\AcademyOptions::classLabel($item->class_level) }} / {{ \App\Support\AcademyOptions::sectionLabel($item->section) }}</span>
+                                <span>{{ number_format($item->average, 1) }}%</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-500">No weekly exam data recorded recently.</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-semibold text-gray-800">Attendance Snapshot (Today)</h3>
+                    <div class="space-y-2 mt-3">
+                        @forelse ($attendanceToday as $class => $statuses)
+                            <div class="flex justify-between text-sm border-b pb-1">
+                                <span>{{ \App\Support\AcademyOptions::classLabel($class) }}</span>
+                                <span>P: {{ $statuses->firstWhere('status', 'present')->total ?? 0 }}, A: {{ $statuses->firstWhere('status', 'absent')->total ?? 0 }}</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-500">No attendance records for today yet.</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">Quick Actions</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <x-secondary-button onclick="window.location='{{ route('attendance.index') }}'">Record Attendance</x-secondary-button>
+                        <x-secondary-button onclick="window.location='{{ route('holidays.index') }}'">Manage Holidays</x-secondary-button>
+                        <x-secondary-button onclick="window.location='{{ route('weekly-exams.index') }}'">Weekly Exams</x-secondary-button>
+                        <x-secondary-button onclick="window.location='{{ route('leaderboard.index') }}'">Leaderboard</x-secondary-button>
+                        <x-secondary-button onclick="window.location='{{ route('reports.index') }}'">Reports</x-secondary-button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4 space-y-3">
+                    <h3 class="font-semibold text-gray-800">Notifications</h3>
                     <div>
                         <p class="text-xs text-gray-500 mb-1">Instructors pending weekly exam updates</p>
                         <ul class="text-sm space-y-1">

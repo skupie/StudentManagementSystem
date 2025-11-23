@@ -15,18 +15,20 @@
         </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-4">
-        <div class="p-4 bg-green-50 rounded-lg">
-            <div class="text-sm text-gray-600">Total Fees Collected</div>
-            <div class="text-3xl font-bold text-green-700 mt-2">৳ {{ number_format($feeCollected, 2) }}</div>
+    @if (! $isAssistant)
+        <div class="grid md:grid-cols-2 gap-4">
+            <div class="p-4 bg-green-50 rounded-lg">
+                <div class="text-sm text-gray-600">Total Fees Collected</div>
+                <div class="text-3xl font-bold text-green-700 mt-2">৳ {{ number_format($feeCollected, 2) }}</div>
+            </div>
+            <div class="p-4 bg-red-50 rounded-lg">
+                <div class="text-sm text-gray-600">Outstanding Fees</div>
+                <div class="text-3xl font-bold text-red-700 mt-2">৳ {{ number_format($outstandingFees, 2) }}</div>
+            </div>
         </div>
-        <div class="p-4 bg-red-50 rounded-lg">
-            <div class="text-sm text-gray-600">Outstanding Fees</div>
-            <div class="text-3xl font-bold text-red-700 mt-2">৳ {{ number_format($outstandingFees, 2) }}</div>
-        </div>
-    </div>
+    @endif
 
-    <div class="grid md:grid-cols-3 gap-4">
+    <div class="grid gap-4 {{ $isAssistant ? '' : 'md:grid-cols-3' }}">
         <div class="bg-white shadow rounded-lg p-4 space-y-3">
             <h3 class="font-semibold text-gray-800">Weekly Exam PDF</h3>
             <div>
@@ -68,59 +70,61 @@
             </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-4 space-y-3">
-            <h3 class="font-semibold text-gray-800">Due List PDF</h3>
-            <div>
-                <x-input-label value="Class" />
-                <select wire:model.live="dueClass" class="mt-1 block w-full rounded-md border-gray-300">
-                    <option value="all">All Classes</option>
-                    @foreach ($classOptions as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
+        @if (! $isAssistant)
+            <div class="bg-white shadow rounded-lg p-4 space-y-3">
+                <h3 class="font-semibold text-gray-800">Due List PDF</h3>
+                <div>
+                    <x-input-label value="Class" />
+                    <select wire:model.live="dueClass" class="mt-1 block w-full rounded-md border-gray-300">
+                        <option value="all">All Classes</option>
+                        @foreach ($classOptions as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <x-input-label value="Section" />
+                    <select wire:model.live="dueSection" class="mt-1 block w-full rounded-md border-gray-300">
+                        <option value="all">All Sections</option>
+                        @foreach ($sectionOptions as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <x-input-label value="Year" />
+                    <x-text-input type="text" wire:model.live="dueYear" class="mt-1 block w-full" placeholder="2024" />
+                </div>
+                <div class="flex gap-2">
+                    <x-secondary-button type="button" wire:click="downloadDueReport" class="w-full justify-center">
+                        PDF
+                    </x-secondary-button>
+                    <x-secondary-button type="button" wire:click="downloadDueExcel" class="w-full justify-center">
+                        Excel
+                    </x-secondary-button>
+                </div>
             </div>
-            <div>
-                <x-input-label value="Section" />
-                <select wire:model.live="dueSection" class="mt-1 block w-full rounded-md border-gray-300">
-                    <option value="all">All Sections</option>
-                    @foreach ($sectionOptions as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <x-input-label value="Year" />
-                <x-text-input type="text" wire:model.live="dueYear" class="mt-1 block w-full" placeholder="2024" />
-            </div>
-            <div class="flex gap-2">
-                <x-secondary-button type="button" wire:click="downloadDueReport" class="w-full justify-center">
-                    PDF
-                </x-secondary-button>
-                <x-secondary-button type="button" wire:click="downloadDueExcel" class="w-full justify-center">
-                    Excel
-                </x-secondary-button>
-            </div>
-        </div>
 
-        <div class="bg-white shadow rounded-lg p-4 space-y-3">
-            <h3 class="font-semibold text-gray-800">Finance PDF</h3>
-            <div>
-                <x-input-label value="Start" />
-                <x-text-input type="date" wire:model.live="financeRangeStart" class="mt-1 block w-full" />
+            <div class="bg-white shadow rounded-lg p-4 space-y-3">
+                <h3 class="font-semibold text-gray-800">Finance PDF</h3>
+                <div>
+                    <x-input-label value="Start" />
+                    <x-text-input type="date" wire:model.live="financeRangeStart" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <x-input-label value="End" />
+                    <x-text-input type="date" wire:model.live="financeRangeEnd" class="mt-1 block w-full" />
+                </div>
+                <div class="flex gap-2">
+                    <x-secondary-button type="button" wire:click="downloadFinanceReport" class="w-full justify-center">
+                        PDF
+                    </x-secondary-button>
+                    <x-secondary-button type="button" wire:click="downloadFinanceExcel" class="w-full justify-center">
+                        Excel
+                    </x-secondary-button>
+                </div>
             </div>
-            <div>
-                <x-input-label value="End" />
-                <x-text-input type="date" wire:model.live="financeRangeEnd" class="mt-1 block w-full" />
-            </div>
-            <div class="flex gap-2">
-                <x-secondary-button type="button" wire:click="downloadFinanceReport" class="w-full justify-center">
-                    PDF
-                </x-secondary-button>
-                <x-secondary-button type="button" wire:click="downloadFinanceExcel" class="w-full justify-center">
-                    Excel
-                </x-secondary-button>
-            </div>
-        </div>
+        @endif
     </div>
 
     <div class="bg-white shadow rounded-lg p-4 space-y-3">

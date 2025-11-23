@@ -20,6 +20,7 @@
                     <option value="admin">System Admin</option>
                     <option value="director">Director</option>
                     <option value="instructor">Lead Instructor</option>
+                    <option value="assistant">Administrative Assistant</option>
                 </select>
                 <x-input-error :messages="$errors->get('form.role')" class="mt-1" />
             </div>
@@ -66,7 +67,15 @@
                             </td>
                             <td class="px-4 py-2">{{ $user->email }}</td>
                             <td class="px-4 py-2">
-                                {{ $user->role === 'admin' ? 'System Admin' : ($user->role === 'director' ? 'Director' : 'Lead Instructor') }}
+                                @php
+                                    $roleLabels = [
+                                        'admin' => 'System Admin',
+                                        'director' => 'Director',
+                                        'instructor' => 'Lead Instructor',
+                                        'assistant' => 'Administrative Assistant',
+                                    ];
+                                @endphp
+                                {{ $roleLabels[$user->role] ?? ucfirst($user->role) }}
                             </td>
                             <td class="px-4 py-2">
                                 <span class="px-2 py-1 rounded-full text-xs {{ $user->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">

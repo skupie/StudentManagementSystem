@@ -34,6 +34,11 @@ class ReportCenter extends Component
     public string $attendanceReportYear = '';
     public string $attendanceReportMonth = '';
 
+    protected function userIsAssistant(): bool
+    {
+        return auth()->user()?->role === 'assistant';
+    }
+
     public function mount(): void
     {
         $this->examMonth = now()->format('Y-m');
@@ -45,6 +50,7 @@ class ReportCenter extends Component
 
     public function render()
     {
+        $isAssistant = $this->userIsAssistant();
         $totalStudents = Student::count();
         $activeStudents = Student::where('status', 'active')->count();
         $attendanceThisMonth = Attendance::whereBetween('attendance_date', [now()->startOfMonth(), now()->endOfMonth()])
@@ -84,6 +90,7 @@ class ReportCenter extends Component
             'sectionOptions' => AcademyOptions::sections(),
             'subjectOptions' => $subjectOptions,
             'studentReportOptions' => $studentReportOptions,
+            'isAssistant' => $isAssistant,
         ]);
     }
 
@@ -114,6 +121,10 @@ class ReportCenter extends Component
 
     public function downloadDueReport()
     {
+        if ($this->userIsAssistant()) {
+            return;
+        }
+
         return redirect()->route('reports.due-list.pdf', [
             'class' => $this->dueClass,
             'section' => $this->dueSection,
@@ -123,6 +134,10 @@ class ReportCenter extends Component
 
     public function downloadDueExcel()
     {
+        if ($this->userIsAssistant()) {
+            return;
+        }
+
         return redirect()->route('reports.due-list.excel', [
             'class' => $this->dueClass,
             'section' => $this->dueSection,
@@ -132,6 +147,10 @@ class ReportCenter extends Component
 
     public function downloadFinanceReport()
     {
+        if ($this->userIsAssistant()) {
+            return;
+        }
+
         return redirect()->route('reports.finance.pdf', [
             'start' => $this->financeRangeStart,
             'end' => $this->financeRangeEnd,
@@ -140,6 +159,10 @@ class ReportCenter extends Component
 
     public function downloadFinanceExcel()
     {
+        if ($this->userIsAssistant()) {
+            return;
+        }
+
         return redirect()->route('reports.finance.excel', [
             'start' => $this->financeRangeStart,
             'end' => $this->financeRangeEnd,

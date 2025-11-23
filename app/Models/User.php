@@ -82,6 +82,11 @@ class User extends Authenticatable
         return $this->role === 'instructor';
     }
 
+    public function isAssistant(): bool
+    {
+        return $this->role === 'assistant';
+    }
+
     public function weeklyExamMarks()
     {
         return $this->hasMany(WeeklyExamMark::class, 'recorded_by');
