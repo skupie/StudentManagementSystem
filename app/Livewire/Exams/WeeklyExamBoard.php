@@ -142,6 +142,7 @@ class WeeklyExamBoard extends Component
         $this->editingId = null;
         $lastClass = $this->form['class_level'] ?: $this->classFilter;
         $lastSection = $this->form['section'] ?: $this->sectionFilter;
+        $lastDate = $this->form['exam_date'] ?: now()->format('Y-m-d');
         $preferredSubject = $this->form['subject'] ?: ($this->subjectFilter !== 'all' ? $this->subjectFilter : '');
         $subject = $preferredSubject ?: $this->defaultSubjectForSection($lastSection);
 
@@ -150,7 +151,7 @@ class WeeklyExamBoard extends Component
             'class_level' => $lastClass,
             'section' => $lastSection,
             'subject' => $subject,
-            'exam_date' => now()->format('Y-m-d'),
+            'exam_date' => $lastDate,
             'marks_obtained' => '',
             'max_marks' => 30,
             'remarks' => '',
