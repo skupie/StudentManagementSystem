@@ -45,6 +45,10 @@ class StudentManager extends Component
     public array $attendanceSummary = ['present' => 0, 'absent' => 0];
     public string $attendanceMonthFilter = '';
 
+    public ?int $noteViewerId = null;
+    public string $noteViewerName = '';
+    public string $noteViewerBody = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'active'],
@@ -210,6 +214,25 @@ class StudentManager extends Component
         $this->attendanceRecords = [];
         $this->attendanceMonthFilter = '';
         $this->attendanceSummary = ['present' => 0, 'absent' => 0];
+    }
+
+    public function showProfileNote(int $studentId): void
+    {
+        $student = Student::find($studentId);
+        if (! $student) {
+            return;
+        }
+
+        $this->noteViewerId = $student->id;
+        $this->noteViewerName = $student->name;
+        $this->noteViewerBody = trim((string) $student->notes) ?: 'No profile note added.';
+    }
+
+    public function closeProfileNote(): void
+    {
+        $this->noteViewerId = null;
+        $this->noteViewerName = '';
+        $this->noteViewerBody = '';
     }
 
     public function updatedAttendanceMonthFilter(): void

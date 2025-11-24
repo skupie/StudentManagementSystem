@@ -154,7 +154,9 @@
                     @php($outstanding = max(0, ($student->invoice_total_due ?? 0) - ($student->invoice_total_paid ?? 0)))
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-2">
-                            <div class="font-semibold text-gray-900">{{ $student->name }}</div>
+                            <button type="button" class="font-semibold text-indigo-600 hover:underline" wire:click="showProfileNote({{ $student->id }})">
+                                {{ $student->name }}
+                            </button>
                             <div class="text-gray-500 text-xs">Enrolled {{ optional($student->enrollment_date)->format('d M Y') }}</div>
                         </td>
                         <td class="px-4 py-2">
@@ -250,6 +252,25 @@
                 </div>
                 <div class="text-right mt-4">
                     <x-secondary-button type="button" wire:click="closeAttendanceHistory">Close</x-secondary-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($noteViewerId)
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Profile Note — {{ $noteViewerName }}</h3>
+                    <button wire:click="closeProfileNote" class="text-gray-500 hover:text-gray-700">&times;</button>
+                </div>
+                <div class="text-sm text-gray-700 whitespace-pre-line border rounded-md p-4 bg-gray-50">
+                    {{ $noteViewerBody }}
+                </div>
+                <div class="text-right">
+                    <x-secondary-button type="button" wire:click="closeProfileNote">
+                        Close
+                    </x-secondary-button>
                 </div>
             </div>
         </div>
