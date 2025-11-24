@@ -46,9 +46,19 @@ class AttendanceBoard extends Component
             ->get()
             ->keyBy('student_id');
 
+        $previousDate = Carbon::parse($this->attendanceDate)->copy()->subDay();
+        $previousAbsences = Attendance::query()
+            ->whereDate('attendance_date', $previousDate)
+            ->where('status', 'absent')
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get()
+            ->keyBy('student_id');
+
         return view('livewire.attendance.attendance-board', [
             'students' => $students,
             'records' => $records,
+            'previousAbsences' => $previousAbsences,
+            'previousDateLabel' => $previousDate->format('d M Y'),
             'classOptions' => AcademyOptions::classes(),
             'sectionOptions' => AcademyOptions::sections(),
             'absenceCategories' => AcademyOptions::absenceCategories(),

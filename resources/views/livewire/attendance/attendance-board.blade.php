@@ -51,10 +51,15 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($students as $student)
                         @php($record = $records->get($student->id))
+                        @php($previousAbsence = $previousAbsences->get($student->id))
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2">
                                 <div class="font-semibold text-gray-900">{{ $student->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $student->phone_number }}</div>
+                                @if ($previousAbsence)
+                                    <div class="text-xs font-semibold text-red-600">
+                                        Absent on {{ \Carbon\Carbon::parse($previousAbsence->attendance_date)->format('d M Y') }}
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-4 py-2">
                                 @if ($record)

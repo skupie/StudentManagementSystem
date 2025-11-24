@@ -420,6 +420,7 @@ class ReportController extends Controller
             ->whereDate('attendance_date', $date->toDateString())
             ->when($class !== 'all', fn ($q) => $q->whereHas('student', fn ($s) => $s->where('class_level', $class)))
             ->when($section !== 'all', fn ($q) => $q->whereHas('student', fn ($s) => $s->where('section', $section)))
+            ->whereRaw('LOWER(status) = ?', ['absent'])
             ->orderBy(Attendance::select('name')->from('students')->whereColumn('students.id', 'attendances.student_id'))
             ->get();
 
@@ -447,7 +448,11 @@ class ReportController extends Controller
             ->when($class !== 'all', fn ($q) => $q->whereHas('student', fn ($s) => $s->where('class_level', $class)))
             ->when($section !== 'all', fn ($q) => $q->whereHas('student', fn ($s) => $s->where('section', $section)))
             ->orderBy(Attendance::select('name')->from('students')->whereColumn('students.id', 'attendances.student_id'))
-            ->get();
+            ->get()
+            ->filter(function ($record) {
+                return trim(strtolower($record->status ?? '')) === 'absent';
+            })
+            ->values();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -468,6 +473,7 @@ class ReportController extends Controller
                 $noteCategory ?: 'Reason not set',
                 $noteBody ?: 'No additional note provided.',
             ], null, 'A' . $row);
+            $sheet->getStyle('G' . $row)->getFont()->getColor()->setARGB('FFB91C1C');
             $row++;
         }
 
