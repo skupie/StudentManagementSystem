@@ -11,6 +11,7 @@ class ManagementEntryBoard extends Component
 {
     use WithPagination;
 
+    public string $entryName = '';
     public string $signInAt = '';
     public string $signOutAt = '';
     public string $monthFilter = '';
@@ -26,12 +27,14 @@ class ManagementEntryBoard extends Component
         return [
             'signInAt' => ['required', 'date'],
             'signOutAt' => ['nullable', 'date'],
+            'entryName' => ['required', 'string', 'max:255'],
         ];
     }
 
     public function mount(): void
     {
         $nowBst = now($this->bstTimezone());
+        $this->entryName = auth()->user()?->name ?? '';
         $this->signInAt = $nowBst->format('Y-m-d\TH:i');
         $this->monthFilter = $nowBst->format('Y-m');
     }
@@ -42,13 +45,22 @@ class ManagementEntryBoard extends Component
         $entries = ManagementEntry::query()
             ->with('user')
             ->when($this->monthFilter, function ($query) use ($appTimezone) {
-                $start = Carbon::parse($this->monthFilter . '-01', $this->bstTimezone())->timezone($appTimezone)->startOfDay();
-                $end = $start->copy()->endOfMonth();
+                $start = Carbon::createFromFormat('Y-m', $this->monthFilter, $this->bstTimezone())
+                    ->startOfMonth()
+                    ->startOfDay()
+                    ->timezone($appTimezone);
+                $end = Carbon::createFromFormat('Y-m', $this->monthFilter, $this->bstTimezone())
+                    ->endOfMonth()
+                    ->endOfDay()
+                    ->timezone($appTimezone);
                 $query->whereBetween('sign_in_at', [$start, $end]);
             })
             ->when($this->search, function ($query) {
-                $query->whereHas('user', function ($sub) {
-                    $sub->where('name', 'like', '%' . $this->search . '%');
+                $query->where(function ($sub) {
+                    $sub->where('entry_name', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('user', function ($userQuery) {
+                            $userQuery->where('name', 'like', '%' . $this->search . '%');
+                        });
                 });
             })
             ->orderByDesc('sign_in_at')
@@ -82,6 +94,7 @@ class ManagementEntryBoard extends Component
 
         ManagementEntry::create([
             'user_id' => auth()->id(),
+            'entry_name' => $data['entryName'],
             'sign_in_at' => $signIn,
             'sign_out_at' => $signOut,
         ]);
@@ -93,6 +106,7 @@ class ManagementEntryBoard extends Component
     protected function resetForm(): void
     {
         $nowBst = now($this->bstTimezone());
+        $this->entryName = '';
         $this->signInAt = $nowBst->format('Y-m-d\TH:i');
         $this->signOutAt = '';
     }

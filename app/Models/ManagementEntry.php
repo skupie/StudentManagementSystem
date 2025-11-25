@@ -12,6 +12,7 @@ class ManagementEntry extends Model
 
     protected $fillable = [
         'user_id',
+        'entry_name',
         'sign_in_at',
         'sign_out_at',
     ];

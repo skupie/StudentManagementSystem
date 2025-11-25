@@ -41,7 +41,7 @@
                         </x-nav-link>
                         @if (in_array($navRole, ['admin', 'director', 'instructor']))
                             <x-nav-link href="{{ route('management.entries') }}" :active="request()->routeIs('management.entries')">
-                                {{ __('Management Entry') }}
+                                {{ __('Management Log') }}
                             </x-nav-link>
                         @endif
                         @if (in_array($navRole, ['admin', 'director']))
@@ -235,7 +235,7 @@
                 </x-responsive-nav-link>
                 @if (in_array($navRole, ['admin', 'director', 'instructor']))
                     <x-responsive-nav-link href="{{ route('management.entries') }}" :active="request()->routeIs('management.entries')">
-                        {{ __('Management Entry') }}
+                        {{ __('Management Log') }}
                     </x-responsive-nav-link>
                 @endif
                 @if (in_array($navRole, ['admin', 'director']))
