@@ -28,6 +28,9 @@ Route::middleware([
         ->middleware('role:admin,director,instructor,assistant')
         ->name('leaderboard.index');
     Route::view('/users', 'pages.users')->middleware('role:admin')->name('users.index');
+    Route::view('/management-entries', 'pages.management-entries')
+        ->middleware('role:admin,director,instructor')
+        ->name('management.entries');
     Route::get('/reports/attendance/pdf', [ReportController::class, 'attendancePdf'])
         ->middleware('role:admin,director')
         ->name('reports.attendance.pdf');

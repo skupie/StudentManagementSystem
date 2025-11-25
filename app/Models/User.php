@@ -91,4 +91,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(WeeklyExamMark::class, 'recorded_by');
     }
+
+    public function managementEntries()
+    {
+        return $this->hasMany(ManagementEntry::class);
+    }
 }

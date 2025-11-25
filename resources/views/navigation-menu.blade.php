@@ -39,6 +39,11 @@
                         <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                             {{ __('Attendance') }}
                         </x-nav-link>
+                        @if (in_array($navRole, ['admin', 'director', 'instructor']))
+                            <x-nav-link href="{{ route('management.entries') }}" :active="request()->routeIs('management.entries')">
+                                {{ __('Management Entry') }}
+                            </x-nav-link>
+                        @endif
                         @if (in_array($navRole, ['admin', 'director']))
                             <x-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                                 {{ __('Attendance Log') }}
@@ -228,6 +233,11 @@
                 <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                     {{ __('Attendance') }}
                 </x-responsive-nav-link>
+                @if (in_array($navRole, ['admin', 'director', 'instructor']))
+                    <x-responsive-nav-link href="{{ route('management.entries') }}" :active="request()->routeIs('management.entries')">
+                        {{ __('Management Entry') }}
+                    </x-responsive-nav-link>
+                @endif
                 @if (in_array($navRole, ['admin', 'director']))
                     <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                         {{ __('Attendance Log') }}
