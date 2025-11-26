@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('subject')->nullable();
             $table->decimal('payment', 10, 2)->nullable();
             $table->string('contact_number', 50)->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->text('note')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });

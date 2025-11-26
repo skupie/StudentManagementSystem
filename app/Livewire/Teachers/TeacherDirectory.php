@@ -11,23 +11,30 @@ class TeacherDirectory extends Component
     use WithPagination;
 
     public string $search = '';
+    public string $statusFilter = 'all';
     public ?int $editingId = null;
     public array $form = [
         'name' => '',
         'subject' => '',
         'payment' => '',
         'contact_number' => '',
+        'is_active' => true,
+        'note' => '',
     ];
 
     public function render()
     {
         $teachers = Teacher::query()
+            ->when($this->statusFilter !== 'all', function ($query) {
+                $query->where('is_active', $this->statusFilter === 'active');
+            })
             ->when($this->search, function ($query) {
                 $query->where(function ($sub) {
                     $sub->where('name', 'like', '%' . $this->search . '%')
                         ->orWhere('subject', 'like', '%' . $this->search . '%');
                 });
             })
+            ->orderByDesc('is_active')
             ->orderBy('name')
             ->paginate(10);
 
@@ -47,6 +54,8 @@ class TeacherDirectory extends Component
             'form.subject' => ['nullable', 'string', 'max:255'],
             'form.payment' => ['nullable', 'numeric', 'min:0'],
             'form.contact_number' => ['nullable', 'string', 'max:50'],
+            'form.is_active' => ['required', 'boolean'],
+            'form.note' => ['nullable', 'string'],
         ])['form'];
 
         if ($this->editingId) {
@@ -55,6 +64,8 @@ class TeacherDirectory extends Component
                 'subject' => $data['subject'],
                 'payment' => $data['payment'] ?: null,
                 'contact_number' => $data['contact_number'],
+                'is_active' => (bool) $data['is_active'],
+                'note' => $data['note'],
             ]);
         } else {
             Teacher::create([
@@ -62,6 +73,8 @@ class TeacherDirectory extends Component
                 'subject' => $data['subject'],
                 'payment' => $data['payment'] ?: null,
                 'contact_number' => $data['contact_number'],
+                'is_active' => (bool) $data['is_active'],
+                'note' => $data['note'],
                 'created_by' => auth()->id(),
             ]);
         }
@@ -84,6 +97,8 @@ class TeacherDirectory extends Component
             'subject' => '',
             'payment' => '',
             'contact_number' => '',
+            'is_active' => true,
+            'note' => '',
         ];
     }
 
@@ -104,6 +119,8 @@ class TeacherDirectory extends Component
             'subject' => $teacher->subject ?? '',
             'payment' => $teacher->payment ?? '',
             'contact_number' => $teacher->contact_number ?? '',
+            'is_active' => (bool) $teacher->is_active,
+            'note' => $teacher->note ?? '',
         ];
     }
 }

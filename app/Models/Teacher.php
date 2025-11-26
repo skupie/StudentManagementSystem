@@ -15,7 +15,14 @@ class Teacher extends Model
         'subject',
         'payment',
         'contact_number',
+        'is_active',
+        'note',
         'created_by',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'payment' => 'decimal:2',
     ];
 
     public function creator(): BelongsTo
