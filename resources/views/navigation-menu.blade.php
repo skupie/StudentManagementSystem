@@ -29,6 +29,9 @@
                         <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
                             {{ __('Reports') }}
                         </x-nav-link>
+                        <x-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.index')">
+                            {{ __('Teachers') }}
+                        </x-nav-link>
                     @else
                         <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
@@ -79,6 +82,9 @@
                                 {{ __('Leaderboard') }}
                             </x-nav-link>
                         @endif
+                        <x-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.index')">
+                            {{ __('Teachers') }}
+                        </x-nav-link>
                         <x-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
                             {{ __('Reports') }}
                         </x-nav-link>
@@ -223,6 +229,9 @@
                 <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
                     {{ __('Reports') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.index')">
+                    {{ __('Teachers') }}
+                </x-responsive-nav-link>
             @else
                 <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
                     {{ __('Dashboard') }}
@@ -273,6 +282,9 @@
                         {{ __('Leaderboard') }}
                     </x-responsive-nav-link>
                 @endif
+                <x-responsive-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.index')">
+                    {{ __('Teachers') }}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link href="{{ route('reports.index') }}" :active="request()->routeIs('reports.index')">
                     {{ __('Reports') }}
                 </x-responsive-nav-link>

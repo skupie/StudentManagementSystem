@@ -75,12 +75,13 @@
                     @forelse ($entries as $entry)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2">
-                                <div class="font-semibold text-gray-900">{{ $entry->entry_name ?: ($entry->user?->name ?? 'N/A') }}</div>
-                                <div class="text-xs text-gray-500">
-                                    @if ($entry->user?->role)
-                                        {{ ucfirst($entry->user->role) }}
-                                    @endif
-                                </div>
+                                @if ($canEdit)
+                                    <button type="button" class="font-semibold text-gray-900 underline" wire:click="startEdit({{ $entry->id }})">
+                                        {{ $entry->entry_name ?: ($entry->user?->name ?? 'N/A') }}
+                                    </button>
+                                @else
+                                    <div class="font-semibold text-gray-900">{{ $entry->entry_name ?: ($entry->user?->name ?? 'N/A') }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-800">
                                 {{ optional($entry->sign_in_at)?->timezone($timezoneLabel)->format('d M Y, h:i A') }}

@@ -1,42 +1,5 @@
 <div class="space-y-6">
     <div class="bg-white shadow rounded-lg p-4 space-y-4">
-        <div class="grid md:grid-cols-5 gap-3">
-            <div>
-                <x-input-label value="Class" />
-                <select wire:model.live="classFilter" class="mt-1 block w-full rounded-md border-gray-300">
-                    @foreach ($classOptions as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <x-input-label value="Section" />
-                <select wire:model.live="sectionFilter" class="mt-1 block w-full rounded-md border-gray-300">
-                    @foreach ($sectionOptions as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <x-input-label value="Subject" />
-                <select wire:model.live="subjectFilter" class="mt-1 block w-full rounded-md border-gray-300">
-                    @foreach ($subjectOptions as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <x-input-label value="Exam Date Filter" />
-                <x-text-input type="date" wire:model.live="examDateFilter" class="mt-1 block w-full" />
-            </div>
-            <div>
-                <x-input-label value="Search Student" />
-                <x-text-input type="text" wire:model.live.debounce.300ms="search" class="mt-1 block w-full" placeholder="Name" />
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white shadow rounded-lg p-4 space-y-4">
         <h3 class="font-semibold text-gray-800">{{ $editingId ? 'Update Weekly Mark' : 'Add Weekly Mark' }}</h3>
         <div class="grid md:grid-cols-5 gap-3">
             <div>
@@ -105,6 +68,43 @@
             <x-primary-button type="button" wire:click="save">
                 {{ $editingId ? 'Update' : 'Save' }}
             </x-primary-button>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-4 space-y-4">
+        <div class="grid md:grid-cols-5 gap-3">
+            <div>
+                <x-input-label value="Class" />
+                <select wire:model.live="classFilter" class="mt-1 block w-full rounded-md border-gray-300">
+                    @foreach ($classOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <x-input-label value="Section" />
+                <select wire:model.live="sectionFilter" class="mt-1 block w-full rounded-md border-gray-300">
+                    @foreach ($sectionOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <x-input-label value="Subject" />
+                <select wire:model.live="subjectFilter" class="mt-1 block w-full rounded-md border-gray-300">
+                    @foreach ($subjectOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <x-input-label value="Exam Date Filter" />
+                <x-text-input type="date" wire:model.live="examDateFilter" class="mt-1 block w-full" />
+            </div>
+            <div>
+                <x-input-label value="Search Student" />
+                <x-text-input type="text" wire:model.live.debounce.300ms="search" class="mt-1 block w-full" placeholder="Name" />
+            </div>
         </div>
     </div>
 

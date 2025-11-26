@@ -16,6 +16,7 @@ class ManagementEntryBoard extends Component
     public string $signOutAt = '';
     public string $monthFilter = '';
     public string $search = '';
+    public ?int $editingId = null;
 
     protected $queryString = [
         'monthFilter' => ['except' => ''],
@@ -71,6 +72,7 @@ class ManagementEntryBoard extends Component
             'canCreate' => $this->userIsInstructor(),
             'isReadOnlyViewer' => $this->userIsViewer(),
             'timezoneLabel' => $this->bstTimezone(),
+            'canEdit' => $this->userIsInstructor(),
         ]);
     }
 
@@ -92,23 +94,53 @@ class ManagementEntryBoard extends Component
             return;
         }
 
-        ManagementEntry::create([
-            'user_id' => auth()->id(),
-            'entry_name' => $data['entryName'],
-            'sign_in_at' => $signIn,
-            'sign_out_at' => $signOut,
-        ]);
+        if ($this->editingId) {
+            ManagementEntry::whereKey($this->editingId)->update([
+                'entry_name' => $data['entryName'],
+                'sign_in_at' => $signIn,
+                'sign_out_at' => $signOut,
+            ]);
+        } else {
+            ManagementEntry::create([
+                'user_id' => auth()->id(),
+                'entry_name' => $data['entryName'],
+                'sign_in_at' => $signIn,
+                'sign_out_at' => $signOut,
+            ]);
+        }
 
         $this->resetForm();
         $this->dispatch('notify', message: 'Entry recorded.');
     }
 
+    public function startEdit(int $entryId): void
+    {
+        if (! $this->userIsInstructor()) {
+            return;
+        }
+
+        $entry = ManagementEntry::find($entryId);
+        if (! $entry) {
+            return;
+        }
+
+        $this->editingId = $entry->id;
+        $this->entryName = $entry->entry_name ?: ($entry->user?->name ?? '');
+        $this->signInAt = $entry->sign_in_at
+            ? $entry->sign_in_at->timezone($this->bstTimezone())->format('Y-m-d\TH:i')
+            : '';
+        $this->signOutAt = $entry->sign_out_at
+            ? $entry->sign_out_at->timezone($this->bstTimezone())->format('Y-m-d\TH:i')
+            : '';
+    }
+
     protected function resetForm(): void
     {
         $nowBst = now($this->bstTimezone());
-        $this->entryName = '';
+        $this->entryName = auth()->user()?->name ?? '';
         $this->signInAt = $nowBst->format('Y-m-d\TH:i');
         $this->signOutAt = '';
+        $this->editingId = null;
     }
 
     protected function userIsInstructor(): bool

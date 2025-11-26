@@ -24,6 +24,7 @@ Route::middleware([
     Route::view('/weekly-exams', 'pages.weekly-exams')->name('weekly-exams.index');
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');
+    Route::view('/teachers', 'pages.teachers')->name('teachers.index');
     Route::view('/leaderboard', 'pages.leaderboard')
         ->middleware('role:admin,director,instructor,assistant')
         ->name('leaderboard.index');
@@ -38,10 +39,10 @@ Route::middleware([
         ->middleware('role:admin,director')
         ->name('reports.attendance.excel');
     Route::get('/reports/attendance/matrix/xlsx', [ReportController::class, 'attendanceMatrixXlsx'])
-        ->middleware('role:admin,director,assistant')
+        ->middleware('role:admin,director,instructor,assistant')
         ->name('reports.attendance.matrix.xlsx');
     Route::get('/reports/attendance/matrix', [ReportController::class, 'attendanceMatrixCsv'])
-        ->middleware('role:admin,director,assistant')
+        ->middleware('role:admin,director,instructor,assistant')
         ->name('reports.attendance.matrix.csv');
 
     Route::get('/reports/weekly-exams/pdf', [ReportController::class, 'weeklyExams'])
@@ -64,10 +65,10 @@ Route::middleware([
         ->middleware('role:admin,director,instructor,assistant')
         ->name('reports.weekly-exams.excel');
     Route::get('/reports/finance/excel', [ReportController::class, 'financeExcel'])
-        ->middleware('role:admin,director')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.finance.excel');
 
     Route::get('/reports/finance/pdf', [ReportController::class, 'finance'])
-        ->middleware('role:admin,director')
+        ->middleware('role:admin,director,instructor')
         ->name('reports.finance.pdf');
 });
