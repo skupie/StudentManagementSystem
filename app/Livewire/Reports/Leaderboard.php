@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Student;
 use App\Models\WeeklyExamMark;
 use App\Support\AcademyOptions;
+use Carbon\Carbon;
 use Livewire\Component;
 
 class Leaderboard extends Component
@@ -22,6 +23,10 @@ class Leaderboard extends Component
             ->orderBy('section')
             ->get();
 
+        $activeGroups = $activeGroups
+            ->unique(fn ($g) => $g->class_level . '|' . $g->section)
+            ->values();
+
         $attendanceStats = Attendance::query()
             ->selectRaw('students.class_level, students.section, students.name, students.id as student_id, COUNT(*) as total_present')
             ->join('students', 'students.id', '=', 'attendances.student_id')
@@ -29,6 +34,8 @@ class Leaderboard extends Component
             ->where('attendances.status', 'present')
             ->groupBy('students.id', 'students.name', 'students.class_level', 'students.section')
             ->get();
+
+        $hasAttendance = $attendanceStats->isNotEmpty();
 
         $attendanceMap = $attendanceStats
             ->groupBy(fn ($row) => $row->class_level . '|' . $row->section)
@@ -92,6 +99,7 @@ class Leaderboard extends Component
 
         return view('livewire.reports.leaderboard', [
             'groups' => $groups,
+            'hasAttendance' => $hasAttendance,
         ]);
     }
 }

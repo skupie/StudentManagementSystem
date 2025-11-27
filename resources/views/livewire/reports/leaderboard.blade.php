@@ -9,7 +9,7 @@
                         Recognizing the most diligent attendees and high-performing students across every class & section.
                     </p>
                 </div>
-                <div class="flex flex-wrap gap-3">
+                <div class="flex flex-wrap gap-3 items-center">
                     <div class="rounded-xl px-4 py-2 text-center min-w-[130px]" style="background-color:#d97706;">
                         <p class="text-xs uppercase tracking-wide text-white">Attendance Stars</p>
                         <p class="text-lg font-semibold text-white">

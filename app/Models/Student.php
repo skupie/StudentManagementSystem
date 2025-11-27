@@ -192,11 +192,11 @@ class Student extends Model
 
         $attendanceCount = $this->attendanceCountForMonth($month);
 
-        if ($attendanceCount <= 6) {
+        if ($attendanceCount <= 5) {
             return 0;
         }
 
-        if ($attendanceCount <= 15) {
+        if ($attendanceCount <= 12) {
             return round($this->monthly_fee / 2, 2);
         }
 
