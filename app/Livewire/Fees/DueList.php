@@ -6,6 +6,7 @@ use App\Models\FeeInvoice;
 use App\Models\FeePayment;
 use App\Models\Student;
 use App\Support\AcademyOptions;
+use Carbon\Carbon;
 use Livewire\Component;
 
 class DueList extends Component
@@ -40,7 +41,12 @@ class DueList extends Component
             ->orderBy('name')
             ->get()
             ->map(function (Student $student) {
-                $summary = $student->dueSummary();
+                $latestInvoiceMonth = $student->feeInvoices->max('billing_month');
+                $asOf = $latestInvoiceMonth
+                    ? Carbon::parse($latestInvoiceMonth)->startOfMonth()
+                    : now()->startOfMonth();
+
+                $summary = $student->dueSummary($asOf);
                 $student->outstanding = $summary['amount'];
                 $student->due_months = implode(', ', $summary['months']);
                 return $student;

@@ -187,24 +187,24 @@
     </div>
 
     <div class="bg-white shadow rounded-lg p-4 space-y-4">
-        <div class="grid md:grid-cols-4 gap-3">
-            <div>
-                <x-input-label value="Class Filter" />
+        <div class="grid md:grid-cols-6 gap-3 items-end">
+            <div class="md:w-32">
+                <x-input-label value="Class" />
                 <select wire:model.live="filterClass" class="mt-1 block w-full rounded-md border-gray-300">
                     @foreach ($classOptions as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
-                <x-input-label value="Section Filter" />
+            <div class="md:w-40">
+                <x-input-label value="Section" />
                 <select wire:model.live="filterSection" class="mt-1 block w-full rounded-md border-gray-300">
                     @foreach ($sectionOptions as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="md:w-32">
                 <x-input-label value="Status" />
                 <select wire:model.live="filterStatus" class="mt-1 block w-full rounded-md border-gray-300">
                     <option value="pending">Pending</option>
@@ -213,9 +213,13 @@
                     <option value="all">All</option>
                 </select>
             </div>
-            <div>
+            <div class="md:w-36">
                 <x-input-label value="Billing Month" />
                 <x-text-input type="month" wire:model.live="filterMonth" class="mt-1 block w-full" />
+            </div>
+            <div class="md:col-span-2">
+                <x-input-label value="Search Invoice" />
+                <x-text-input type="text" wire:model.live.debounce.300ms="invoiceStudentSearch" class="mt-1 block w-full" placeholder="Name or phone" />
             </div>
         </div>
 

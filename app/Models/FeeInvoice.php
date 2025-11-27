@@ -19,8 +19,10 @@ class FeeInvoice extends Model
         'scholarship_amount',
         'amount_paid',
         'status',
+        'was_active',
         'payment_mode_last',
         'notes',
+        'manual_override',
     ];
 
     protected $casts = [
@@ -29,6 +31,8 @@ class FeeInvoice extends Model
         'amount_due' => 'decimal:2',
         'scholarship_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
+        'was_active' => 'boolean',
+        'manual_override' => 'boolean',
     ];
 
     public function student(): BelongsTo

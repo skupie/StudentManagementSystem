@@ -87,6 +87,10 @@ class FeeManager extends Component
             ->when($this->filterClass !== 'all', fn ($q) => $q->whereHas('student', fn ($sub) => $sub->where('class_level', $this->filterClass)))
             ->when($this->filterSection !== 'all', fn ($q) => $q->whereHas('student', fn ($sub) => $sub->where('section', $this->filterSection)))
             ->when($this->filterStatus !== 'all', fn ($q) => $q->where('status', $this->filterStatus))
+            ->when($this->invoiceStudentSearch, fn ($q) => $q->whereHas('student', function ($sub) {
+                $sub->where('name', 'like', '%' . $this->invoiceStudentSearch . '%')
+                    ->orWhere('phone_number', 'like', '%' . $this->invoiceStudentSearch . '%');
+            }))
             ->when($this->filterMonth, fn ($q) => $q->whereRaw("DATE_FORMAT(billing_month, '%Y-%m') = ?", [$this->filterMonth]))
             ->latest('billing_month')
             ->paginate(10);
@@ -96,8 +100,15 @@ class FeeManager extends Component
             $selectedInvoice = FeeInvoice::with('student')->find($this->paymentForm['fee_invoice_id']);
         }
 
+        $totalDue = 0;
+        Student::chunkById(200, function ($students) use (&$totalDue) {
+            foreach ($students as $student) {
+                $totalDue += $student->dueSummary()['amount'];
+            }
+        });
+
         $totals = [
-            'due' => FeeInvoice::outstanding()->sum('amount_due') - FeeInvoice::outstanding()->sum('amount_paid'),
+            'due' => $totalDue,
             'collected' => FeePayment::sum('amount'),
         ];
 
@@ -111,6 +122,31 @@ class FeeManager extends Component
             'recentPayments' => $recentPayments,
             'selectedInvoice' => $selectedInvoice,
         ]);
+    }
+
+    public function updatedInvoiceStudentSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterClass(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterSection(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterMonth(): void
+    {
+        $this->resetPage();
     }
 
     public function createInvoice(): void
@@ -134,8 +170,16 @@ class FeeManager extends Component
                 'due_date' => $data['due_date'],
                 'amount_due' => $baseAmount,
                 'scholarship_amount' => 0,
+                'was_active' => true,
+                'manual_override' => true,
                 'notes' => $data['notes'],
+                'status' => 'pending',
             ]);
+            $invoice->amount_paid = min($invoice->amount_paid ?? 0, $invoice->amount_due);
+            $invoice->status = $invoice->amount_paid >= $invoice->amount_due
+                ? 'paid'
+                : ($invoice->amount_paid > 0 ? 'partial' : 'pending');
+            $invoice->save();
         } else {
             $invoice = FeeInvoice::updateOrCreate(
                 [
@@ -146,12 +190,17 @@ class FeeManager extends Component
                     'due_date' => $data['due_date'],
                     'amount_due' => $baseAmount,
                     'scholarship_amount' => 0,
+                    'was_active' => true,
+                    'manual_override' => true,
                     'notes' => $data['notes'],
+                    'amount_paid' => 0,
+                    'status' => 'pending',
                 ]
             );
         }
 
         $this->resetInvoiceForm($invoice->student_id);
+        $this->resetPage();
     }
 
     public function editInvoice(int $invoiceId): void

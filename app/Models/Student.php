@@ -68,9 +68,25 @@ class Student extends Model
         $asOf = ($asOf ?? now())->copy()->startOfMonth();
 
         if (! $this->enrollment_date || ! $this->monthly_fee) {
+            $openInvoices = $this->feeInvoices()
+                ->where('billing_month', '<=', $asOf)
+                ->orderBy('billing_month')
+                ->get();
+
+            $amount = 0;
+            $months = [];
+
+            foreach ($openInvoices as $invoice) {
+                $due = max(0, (float) $invoice->amount_due - (float) $invoice->amount_paid);
+                if ($due > 0.01) {
+                    $amount += $due;
+                    $months[] = Carbon::parse($invoice->billing_month)->format('M Y');
+                }
+            }
+
             return [
-                'amount' => 0,
-                'months' => [],
+                'amount' => round($amount, 2),
+                'months' => $months,
             ];
         }
 
@@ -85,7 +101,9 @@ class Student extends Model
         $months = [];
 
         foreach ($openInvoices as $invoice) {
-            $this->adjustInvoiceForAttendance($invoice);
+            if (! $invoice->manual_override) {
+                $this->adjustInvoiceForAttendance($invoice);
+            }
             $due = max(0, $invoice->amount_due - $invoice->amount_paid);
             if ($due > 0.01) {
                 $amount += $due;
