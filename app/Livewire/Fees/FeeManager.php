@@ -268,6 +268,8 @@ class FeeManager extends Component
                 ]);
             }
 
+            $previousInvoiceScholarship = $targetInvoice->scholarship_amount;
+
             $targetInvoice->scholarship_amount = $scholarship;
             $targetInvoice->amount_due = round(max(0, $baseAmount - $scholarship), 2);
             $targetInvoice->save();
@@ -282,7 +284,7 @@ class FeeManager extends Component
                 $payment = FeePayment::lockForUpdate()->findOrFail($this->editingPaymentId);
                 $previousInvoice = FeeInvoice::lockForUpdate()->findOrFail($payment->fee_invoice_id);
                 $previousAmount = $payment->amount;
-                $previousScholarship = optional($payment->invoice)->scholarship_amount ?? 0;
+                $previousScholarship = $previousInvoiceScholarship;
 
                 $payment->update([
                     'fee_invoice_id' => $targetInvoice->id,
