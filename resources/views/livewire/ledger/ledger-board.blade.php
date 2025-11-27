@@ -85,7 +85,12 @@
                                 • {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }}
                             </div>
                             <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }} • {{ $payment->payment_mode }}</div>
-                            <div class="text-xs text-gray-500">Receipt # {{ $payment->receipt_number ?? 'N/A' }}</div>
+                            <div class="text-xs text-gray-500">
+                                Receipt # {{ $payment->receipt_number ?? 'N/A' }}
+                                @if ($payment->invoice?->billing_month)
+                                    • {{ \Carbon\Carbon::parse($payment->invoice->billing_month)->format('M Y') }}
+                                @endif
+                            </div>
                             @php($ledgerScholarship = optional($payment->invoice)->scholarship_amount ?? 0)
                             @if ($ledgerScholarship > 0)
                                 <div class="text-xs text-blue-600">

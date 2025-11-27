@@ -106,8 +106,8 @@
                         @endunless
                         <td class="px-4 py-2 space-x-2">
                             @if ($teacher->contact_number)
-                                <a href="tel:{{ $teacher->contact_number }}" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
-                                    <span class="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">Call</span>
+                                <a href="tel:{{ $teacher->contact_number }}" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50">
+                                    {{ __('Call') }}
                                 </a>
                             @else
                                 <span class="text-gray-400">—</span>

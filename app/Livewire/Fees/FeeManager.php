@@ -209,6 +209,7 @@ class FeeManager extends Component
             $baseAmount = (float) $targetInvoice->gross_amount;
             $scholarship = round((float) ($this->paymentForm['scholarship_amount'] ?? 0), 2);
             $paymentAmount = round((float) ($this->paymentForm['amount'] ?? 0), 2);
+            $shouldRecordPayment = $paymentAmount > 0 || $scholarship > 0;
 
             if ($scholarship > $baseAmount) {
                 throw ValidationException::withMessages([
@@ -243,7 +244,7 @@ class FeeManager extends Component
                 $this->refreshInvoicePaymentSummary($previousInvoice);
                 $this->refreshInvoicePaymentSummary($targetInvoice);
             } else {
-                if ($paymentAmount > 0) {
+                if ($shouldRecordPayment) {
                     FeePayment::create([
                         'fee_invoice_id' => $targetInvoice->id,
                         'student_id' => $targetInvoice->student_id,
