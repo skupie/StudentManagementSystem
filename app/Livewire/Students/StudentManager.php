@@ -49,6 +49,11 @@ class StudentManager extends Component
     public string $noteViewerName = '';
     public string $noteViewerBody = '';
 
+    public ?int $confirmingDeleteId = null;
+    public string $confirmingDeleteName = '';
+    public ?int $confirmingDeactivateId = null;
+    public string $confirmingDeactivateName = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'active'],
@@ -167,7 +172,25 @@ class StudentManager extends Component
     {
         $student = Student::findOrFail($studentId);
         $student->delete();
+        $this->cancelDelete();
         $this->dispatch('notify', message: 'Student removed.');
+    }
+
+    public function promptDelete(int $studentId): void
+    {
+        $student = Student::find($studentId);
+        if (! $student) {
+            return;
+        }
+
+        $this->confirmingDeleteId = $student->id;
+        $this->confirmingDeleteName = $student->name;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+        $this->confirmingDeleteName = '';
     }
 
     public function toggleStatus(int $studentId): void
@@ -181,6 +204,44 @@ class StudentManager extends Component
         }
 
         $this->dispatch('notify', message: 'Student status updated.');
+    }
+
+    public function promptDeactivate(int $studentId): void
+    {
+        $student = Student::find($studentId);
+        if (! $student || $student->status !== 'active') {
+            return;
+        }
+
+        $this->confirmingDeactivateId = $student->id;
+        $this->confirmingDeactivateName = $student->name;
+    }
+
+    public function cancelDeactivate(): void
+    {
+        $this->confirmingDeactivateId = null;
+        $this->confirmingDeactivateName = '';
+    }
+
+    public function confirmDeactivate(): void
+    {
+        if (! $this->confirmingDeactivateId) {
+            return;
+        }
+
+        $student = Student::find($this->confirmingDeactivateId);
+        if (! $student) {
+            $this->cancelDeactivate();
+            return;
+        }
+
+        if ($student->status === 'active') {
+            $student->status = 'inactive';
+            $student->save();
+        }
+
+        $this->cancelDeactivate();
+        $this->dispatch('notify', message: 'Student deactivated.');
     }
 
     public function resetForm(): void

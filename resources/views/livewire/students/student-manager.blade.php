@@ -180,13 +180,23 @@
                             <x-secondary-button wire:click="edit({{ $student->id }})" type="button" class="text-xs">
                                 {{ __('Edit') }}
                             </x-secondary-button>
-                            <x-secondary-button wire:click="toggleStatus({{ $student->id }})" type="button" class="text-xs">
-                                {{ $student->status === 'active' ? __('Deactivate') : __('Activate') }}
-                            </x-secondary-button>
+                            @if ($student->status === 'active')
+                                <x-secondary-button wire:click="promptDeactivate({{ $student->id }})" type="button" class="text-xs">
+                                    {{ __('Deactivate') }}
+                                </x-secondary-button>
+                            @else
+                                <x-secondary-button wire:click="toggleStatus({{ $student->id }})" type="button" class="text-xs">
+                                    {{ __('Activate') }}
+                                </x-secondary-button>
+                            @endif
                             <x-secondary-button wire:click="showAttendanceHistory({{ $student->id }})" type="button" class="text-xs">
                                 {{ __('Attendance Log') }}
                             </x-secondary-button>
-                            <x-danger-button wire:click="delete({{ $student->id }})" type="button" class="text-xs">
+                            <x-danger-button
+                                type="button"
+                                class="text-xs"
+                                wire:click="promptDelete({{ $student->id }})"
+                            >
                                 {{ __('Delete') }}
                             </x-danger-button>
                         </td>
@@ -275,4 +285,41 @@
             </div>
         </div>
     @endif
+
+    @if (! is_null($confirmingDeleteId ?? null))
+        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md mx-auto p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Deletion</h3>
+                    <button wire:click="cancelDelete" class="text-gray-500 hover:text-gray-700">&times;</button>
+                </div>
+                <p class="text-sm text-gray-700">
+                    Do You want to delete <span class="font-semibold">{{ $confirmingDeleteName }}</span>'s Data? This cannot be undone
+                </p>
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="cancelDelete">Cancel</x-secondary-button>
+                    <x-danger-button type="button" wire:click="delete({{ $confirmingDeleteId }})">Delete</x-danger-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if (! is_null($confirmingDeactivateId ?? null))
+        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md mx-auto p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Deactivation</h3>
+                    <button wire:click="cancelDeactivate" class="text-gray-500 hover:text-gray-700">&times;</button>
+                </div>
+                <p class="text-sm text-gray-700">
+                    Do You want to deactivate <span class="font-semibold">{{ $confirmingDeactivateName }}</span>? They will be marked inactive
+                </p>
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="cancelDeactivate">Cancel</x-secondary-button>
+                    <x-danger-button type="button" wire:click="confirmDeactivate">Deactivate</x-danger-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>
