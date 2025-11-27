@@ -14,6 +14,8 @@ class FeePayment extends Model
         'fee_invoice_id',
         'student_id',
         'amount',
+        'previous_amount',
+        'previous_scholarship_amount',
         'payment_date',
         'payment_mode',
         'reference',
@@ -24,6 +26,8 @@ class FeePayment extends Model
     protected $casts = [
         'payment_date' => 'date',
         'amount' => 'decimal:2',
+        'previous_amount' => 'decimal:2',
+        'previous_scholarship_amount' => 'decimal:2',
     ];
 
     public function invoice(): BelongsTo

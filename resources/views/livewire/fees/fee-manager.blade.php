@@ -149,7 +149,9 @@
                                 <tr>
                                     <td class="px-3 py-2">{{ optional($payment->payment_date)->format('d M Y') }}</td>
                                     <td class="px-3 py-2">
-                                        <div class="font-semibold text-gray-900">{{ $payment->student->name }}</div>
+                                        <button type="button" class="font-semibold text-gray-900 underline" wire:click="showPaymentLog({{ $payment->id }})">
+                                            {{ $payment->student->name }}
+                                        </button>
                                         <div class="text-xs text-gray-500">
                                             {{ \App\Support\AcademyOptions::classLabel($payment->student->class_level ?? '') }},
                                             {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }}
@@ -285,4 +287,53 @@
         </div>
         {{ $invoices->links() }}
     </div>
+
+    @if ($showPaymentLogModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-3">
+            <div class="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="font-semibold text-gray-900 text-lg">{{ $paymentLog['student'] ?? 'Payment' }}</div>
+                        <div class="text-xs text-gray-500">
+                            {{ \App\Support\AcademyOptions::classLabel($paymentLog['class'] ?? '') }}
+                            • {{ \App\Support\AcademyOptions::sectionLabel($paymentLog['section'] ?? '') }}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if (!empty($paymentLog['edited']))
+                            <span class="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">Edited</span>
+                        @endif
+                        <x-secondary-button type="button" wire:click="closePaymentLog">Close</x-secondary-button>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 text-sm">
+                    <div><span class="font-semibold">Invoice Month:</span> {{ $paymentLog['invoice_month'] ?? '—' }}</div>
+                    <div><span class="font-semibold">Receipt #:</span> {{ $paymentLog['receipt_number'] ?? '—' }}</div>
+                    <div><span class="font-semibold">Payment Date:</span> {{ $paymentLog['payment_date'] ?? '—' }}</div>
+                    <div><span class="font-semibold">Mode:</span> {{ $paymentLog['payment_mode'] ?? '—' }}</div>
+                    <div>
+                        <span class="font-semibold">Amount:</span>
+                        @if (!empty($paymentLog['previous_amount']))
+                            ৳ {{ number_format($paymentLog['previous_amount'], 2) }} → ৳ {{ number_format($paymentLog['amount'] ?? 0, 2) }}
+                        @else
+                            ৳ {{ number_format($paymentLog['amount'] ?? 0, 2) }}
+                        @endif
+                    </div>
+                    <div>
+                        <span class="font-semibold">Scholarship:</span>
+                        @if (!empty($paymentLog['previous_scholarship_amount']))
+                            ৳ {{ number_format($paymentLog['previous_scholarship_amount'], 2) }} → ৳ {{ number_format($paymentLog['scholarship'] ?? 0, 2) }}
+                        @else
+                            ৳ {{ number_format($paymentLog['scholarship'] ?? 0, 2) }}
+                        @endif
+                    </div>
+                    <div><span class="font-semibold">Base Amount:</span> ৳ {{ number_format($paymentLog['base_amount'] ?? 0, 2) }}</div>
+                    <div><span class="font-semibold">Reference:</span> {{ $paymentLog['reference'] ?? '—' }}</div>
+                    <div><span class="font-semibold">Created:</span> {{ $paymentLog['created_at'] ?? '—' }}</div>
+                    <div><span class="font-semibold">Last Updated:</span> {{ $paymentLog['updated_at'] ?? '—' }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

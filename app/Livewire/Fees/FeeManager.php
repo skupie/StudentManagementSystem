@@ -43,6 +43,8 @@ class FeeManager extends Component
 
     public ?int $payingInvoiceId = null;
     public ?int $editingPaymentId = null;
+    public bool $showPaymentLogModal = false;
+    public array $paymentLog = [];
 
     protected function rules(): array
     {
@@ -279,11 +281,15 @@ class FeeManager extends Component
             if ($this->editingPaymentId) {
                 $payment = FeePayment::lockForUpdate()->findOrFail($this->editingPaymentId);
                 $previousInvoice = FeeInvoice::lockForUpdate()->findOrFail($payment->fee_invoice_id);
+                $previousAmount = $payment->amount;
+                $previousScholarship = optional($payment->invoice)->scholarship_amount ?? 0;
 
                 $payment->update([
                     'fee_invoice_id' => $targetInvoice->id,
                     'student_id' => $targetInvoice->student_id,
                     'amount' => $paymentAmount,
+                    'previous_amount' => $previousAmount,
+                    'previous_scholarship_amount' => $previousScholarship,
                     'payment_date' => $this->paymentForm['payment_date'],
                     'payment_mode' => $this->paymentForm['payment_mode'],
                     'reference' => $this->paymentForm['reference'],
@@ -298,6 +304,8 @@ class FeeManager extends Component
                         'fee_invoice_id' => $targetInvoice->id,
                         'student_id' => $targetInvoice->student_id,
                         'amount' => $paymentAmount,
+                        'previous_amount' => null,
+                        'previous_scholarship_amount' => null,
                         'payment_date' => $this->paymentForm['payment_date'],
                         'payment_mode' => $this->paymentForm['payment_mode'],
                         'reference' => $this->paymentForm['reference'],
@@ -336,6 +344,41 @@ class FeeManager extends Component
         $this->editingPaymentId = null;
         $this->payingInvoiceId = null;
         $this->resetPaymentForm();
+    }
+
+    public function showPaymentLog(int $paymentId): void
+    {
+        $payment = FeePayment::with(['student', 'invoice'])->find($paymentId);
+        if (! $payment) {
+            return;
+        }
+
+        $this->paymentLog = [
+            'student' => $payment->student?->name,
+            'class' => $payment->student?->class_level,
+            'section' => $payment->student?->section,
+            'invoice_month' => optional($payment->invoice?->billing_month)?->format('M Y'),
+            'amount' => $payment->amount,
+            'previous_amount' => $payment->previous_amount,
+            'payment_date' => optional($payment->payment_date)?->format('d M Y'),
+            'payment_mode' => $payment->payment_mode,
+            'receipt_number' => $payment->receipt_number,
+            'reference' => $payment->reference,
+            'scholarship' => optional($payment->invoice)?->scholarship_amount ?? 0,
+            'previous_scholarship_amount' => $payment->previous_scholarship_amount,
+            'base_amount' => optional($payment->invoice)?->gross_amount ?? 0,
+            'created_at' => optional($payment->created_at)?->format('d M Y, h:i A'),
+            'updated_at' => optional($payment->updated_at)?->format('d M Y, h:i A'),
+            'edited' => $payment->updated_at && $payment->created_at && $payment->updated_at->gt($payment->created_at),
+        ];
+
+        $this->showPaymentLogModal = true;
+    }
+
+    public function closePaymentLog(): void
+    {
+        $this->showPaymentLogModal = false;
+        $this->paymentLog = [];
     }
 
     protected function resetInvoiceForm(?int $studentId = null): void
