@@ -28,26 +28,7 @@
         </div>
         <div class="text-right">
             <div class="text-sm text-gray-500">Total Outstanding</div>
-            <div class="text-2xl font-bold text-red-600">৳ {{ number_format($totalDue, 2) }}</div>
-        </div>
-    </div>
-
-    <div class="grid md:grid-cols-3 gap-3">
-        <div>
-            <x-input-label value="Payment Mode" />
-            <select wire:model="paymentMode" class="mt-1 block w-full rounded-md border-gray-300">
-                @foreach (config('academy.payment_modes') as $mode)
-                    <option value="{{ $mode }}">{{ $mode }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div>
-            <x-input-label value="Payment Date" />
-            <x-text-input type="date" wire:model="paymentDate" class="mt-1 block w-full" />
-        </div>
-        <div>
-            <x-input-label value="Reference / Notes" />
-            <x-text-input type="text" wire:model="paymentReference" class="mt-1 block w-full" />
+            <div class="text-2xl font-bold text-red-600">Tk {{ number_format($totalDue, 2) }}</div>
         </div>
     </div>
 
@@ -73,9 +54,8 @@
                 <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <th class="px-4 py-2">Student</th>
                     <th class="px-4 py-2">Section</th>
-                    <th class="px-4 py-2">Outstanding (৳)</th>
-                    <th class="px-4 py-2">Amount to Receive</th>
-                    <th class="px-4 py-2 text-right">Mark Paid</th>
+                    <th class="px-4 py-2">Outstanding (Tk)</th>
+                    <th class="px-4 py-2 text-right">Call</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -89,19 +69,16 @@
                             {{ \App\Support\AcademyOptions::classLabel($student->class_level) }}
                             <div class="text-xs text-gray-500">{{ \App\Support\AcademyOptions::sectionLabel($student->section) }}</div>
                         </td>
-                        <td class="px-4 py-2 text-red-600 font-semibold">৳ {{ number_format($student->outstanding, 2) }}</td>
-                        <td class="px-4 py-2">
-                            <x-text-input type="number" step="0.01" min="0" max="{{ $student->outstanding }}" wire:model.live.debounce.300ms="settlement.{{ $student->id }}" class="mt-1 block w-32" />
-                        </td>
+                        <td class="px-4 py-2 text-red-600 font-semibold">Tk {{ number_format($student->outstanding, 2) }}</td>
                         <td class="px-4 py-2 text-right">
-                            <x-primary-button type="button" wire:click="receivePayment({{ $student->id }})">
-                                Mark Received
-                            </x-primary-button>
+                            <a href="tel:{{ $student->phone_number }}" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50">
+                                Call
+                            </a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                        <td colspan="4" class="px-4 py-6 text-center text-gray-500">
                             No dues found for the selected filters.
                         </td>
                     </tr>
