@@ -11,8 +11,27 @@ use Livewire\Component;
 
 class Leaderboard extends Component
 {
+    public string $monthFilter = '';
+
+    protected $queryString = [
+        'monthFilter' => ['as' => 'month', 'except' => null],
+    ];
+
+    public function mount(): void
+    {
+        $this->monthFilter = $this->sanitizeMonth($this->monthFilter) ?: now()->format('Y-m');
+    }
+
+    public function updatedMonthFilter($value): void
+    {
+        $this->monthFilter = $this->sanitizeMonth($value) ?: now()->format('Y-m');
+    }
+
     public function render()
     {
+        $rangeStart = Carbon::createFromFormat('Y-m', $this->monthFilter)->startOfMonth();
+        $rangeEnd = $rangeStart->copy()->endOfMonth();
+
         $activeGroups = Student::query()
             ->select('class_level', 'section')
             ->where('status', 'active')
@@ -32,6 +51,7 @@ class Leaderboard extends Component
             ->join('students', 'students.id', '=', 'attendances.student_id')
             ->where('students.status', 'active')
             ->where('attendances.status', 'present')
+            ->whereBetween('attendances.attendance_date', [$rangeStart, $rangeEnd])
             ->groupBy('students.id', 'students.name', 'students.class_level', 'students.section')
             ->get();
 
@@ -52,6 +72,7 @@ class Leaderboard extends Component
             ->select('student_id')
             ->whereNotNull('remarks')
             ->whereRaw('LOWER(remarks) = ?', ['absent'])
+            ->whereBetween('exam_date', [$rangeStart, $rangeEnd])
             ->pluck('student_id')
             ->unique();
 
@@ -63,6 +84,7 @@ class Leaderboard extends Component
                 $query->whereNull('weekly_exam_marks.remarks')
                     ->orWhereRaw('LOWER(weekly_exam_marks.remarks) != ?', ['absent']);
             })
+            ->whereBetween('weekly_exam_marks.exam_date', [$rangeStart, $rangeEnd])
             ->groupBy('students.id', 'students.name', 'students.class_level', 'students.section');
 
         if ($absentIds->isNotEmpty()) {
@@ -100,6 +122,16 @@ class Leaderboard extends Component
         return view('livewire.reports.leaderboard', [
             'groups' => $groups,
             'hasAttendance' => $hasAttendance,
+            'monthLabel' => $rangeStart->format('M Y'),
         ]);
+    }
+
+    protected function sanitizeMonth(?string $value): ?string
+    {
+        try {
+            return $value ? Carbon::createFromFormat('Y-m', $value)->format('Y-m') : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

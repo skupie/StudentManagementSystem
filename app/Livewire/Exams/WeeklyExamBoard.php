@@ -31,6 +31,8 @@ class WeeklyExamBoard extends Component
     ];
 
     public ?int $editingId = null;
+    public ?int $confirmingDeleteId = null;
+    public string $confirmingDeleteName = '';
 
     protected function rules(): array
     {
@@ -132,9 +134,31 @@ class WeeklyExamBoard extends Component
         $this->ensureFormSubject();
     }
 
-    public function delete(int $markId): void
+    public function promptDelete(int $markId): void
     {
-        WeeklyExamMark::where('id', $markId)->delete();
+        $mark = WeeklyExamMark::with('student')->find($markId);
+        if (! $mark) {
+            return;
+        }
+
+        $this->confirmingDeleteId = $mark->id;
+        $this->confirmingDeleteName = $mark->student->name ?? 'Mark';
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+        $this->confirmingDeleteName = '';
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if (! $this->confirmingDeleteId) {
+            return;
+        }
+
+        WeeklyExamMark::where('id', $this->confirmingDeleteId)->delete();
+        $this->cancelDelete();
     }
 
     public function resetForm(): void

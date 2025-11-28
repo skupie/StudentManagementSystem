@@ -1,4 +1,4 @@
-﻿<div class="space-y-8">
+﻿<div class="space-y-8" wire:key="leaderboard-{{ $monthFilter }}">
     <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px] rounded-2xl shadow-lg">
         <div class="bg-white rounded-2xl p-6 sm:p-8">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -10,6 +10,17 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-3 items-center">
+                    <div>
+                        <x-input-label value="Filter Month" />
+                        <x-text-input
+                            type="month"
+                            wire:model.live="monthFilter"
+                            value="{{ $monthFilter }}"
+                            wire:key="leaderboard-month-filter"
+                            class="mt-1 block w-full sm:w-44"
+                        />
+                    </div>
+                    <div class="text-sm text-gray-600">Showing {{ $monthLabel }}</div>
                     <div class="rounded-xl px-4 py-2 text-center min-w-[130px]" style="background-color:#d97706;">
                         <p class="text-xs uppercase tracking-wide text-white">Attendance Stars</p>
                         <p class="text-lg font-semibold text-white">
@@ -31,7 +42,7 @@
         @forelse ($groups as $group)
             @php($attendanceStars = $group['attendance'])
             @php($examStars = $group['exam'])
-            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5 hover:shadow-xl transition">
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5 hover:shadow-xl transition" wire:key="lb-{{ $monthFilter }}-{{ $group['class_label'] }}-{{ $group['section_label'] }}">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-400">Class / Section</p>

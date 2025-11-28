@@ -141,7 +141,7 @@
                                 <x-secondary-button type="button" wire:click="edit({{ $mark->id }})" class="text-xs">
                                     Edit
                                 </x-secondary-button>
-                                <x-danger-button type="button" wire:click="delete({{ $mark->id }})" class="text-xs">
+                                <x-danger-button type="button" wire:click="promptDelete({{ $mark->id }})" class="text-xs">
                                     Delete
                                 </x-danger-button>
                             </td>
@@ -158,4 +158,22 @@
         </div>
         {{ $marks->links() }}
     </div>
+
+    @if (! is_null($confirmingDeleteId ?? null))
+        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md mx-auto p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Deletion</h3>
+                    <button wire:click="cancelDelete" class="text-gray-500 hover:text-gray-700">&times;</button>
+                </div>
+                <p class="text-sm text-gray-700">
+                    Do You want to delete {{ $confirmingDeleteName }}'s weekly exam mark? This cannot be undone
+                </p>
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="cancelDelete">Cancel</x-secondary-button>
+                    <x-danger-button type="button" wire:click="deleteConfirmed">Delete</x-danger-button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
