@@ -10,6 +10,8 @@ class TransferBoard extends Component
 {
     public ?string $alert = null;
     public bool $confirmingTransfer = false;
+    public bool $confirmingRevert = false;
+    public array $lastPromotedIds = [];
 
     public function render()
     {
@@ -43,15 +45,51 @@ class TransferBoard extends Component
         $this->confirmingTransfer = false;
     }
 
+    public function promptRevert(): void
+    {
+        $this->confirmingRevert = true;
+    }
+
+    public function cancelRevert(): void
+    {
+        $this->confirmingRevert = false;
+    }
+
     public function transfer(): void
     {
         $this->confirmingTransfer = false;
-        Student::query()
+        $ids = Student::query()
             ->where('class_level', 'hsc_1')
             ->where('is_passed', false)
-            ->update(['class_level' => 'hsc_2']);
+            ->pluck('id')
+            ->toArray();
+
+        if (! empty($ids)) {
+            Student::whereIn('id', $ids)->update(['class_level' => 'hsc_2']);
+            $this->lastPromotedIds = $ids;
+        } else {
+            $this->lastPromotedIds = [];
+        }
 
         $this->alert = 'Congratulation! Students are promoted to HSC 2nd Year.';
         $this->dispatch('notify', message: 'All HSC 1st Year students transferred to HSC 2nd Year.');
+    }
+
+    public function revert(): void
+    {
+        $this->confirmingRevert = false;
+        if (empty($this->lastPromotedIds)) {
+            $this->alert = 'Nothing to revert. Please promote first.';
+            $this->dispatch('notify', message: 'No recent promotion to revert.');
+            return;
+        }
+
+        Student::whereIn('id', $this->lastPromotedIds)
+            ->where('class_level', 'hsc_2')
+            ->update(['class_level' => 'hsc_1']);
+
+        $this->alert = 'Reverted: recently promoted students moved back to HSC 1st Year.';
+        $this->dispatch('notify', message: 'Transfer reverted for recently promoted students.');
+        $this->lastPromotedIds = [];
     }
 }

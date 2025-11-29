@@ -22,6 +22,10 @@
                 <x-text-input type="text" wire:model.debounce.500ms="yearFilter" class="mt-1 block w-full" placeholder="2024" />
             </div>
             <div>
+                <x-input-label value="Month (optional)" />
+                <x-text-input type="month" wire:model.live="monthFilter" class="mt-1 block w-full" />
+            </div>
+            <div>
                 <x-input-label value="Student Name" />
                 <x-text-input type="text" wire:model.live.debounce.300ms="nameFilter" class="mt-1 block w-full" placeholder="Search name" />
             </div>

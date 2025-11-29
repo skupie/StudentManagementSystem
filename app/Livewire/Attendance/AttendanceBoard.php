@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\StudentNote;
 use App\Support\AcademyOptions;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class AttendanceBoard extends Component
@@ -37,6 +38,17 @@ class AttendanceBoard extends Component
             $attendanceYear . '-' . ($attendanceYear + 1),
         ];
 
+        $currentDate = Carbon::parse($this->attendanceDate);
+        $prevStart = $currentDate->copy()->subMonth()->startOfMonth();
+        $prevEnd = $currentDate->copy()->subMonth()->endOfMonth();
+
+        $previousCounts = Attendance::query()
+            ->select('student_id', DB::raw('count(*) as total'))
+            ->where('status', 'present')
+            ->whereBetween('attendance_date', [$prevStart, $prevEnd])
+            ->groupBy('student_id')
+            ->pluck('total', 'student_id');
+
         $students = Student::query()
             ->where('status', 'active')
             ->where('is_passed', false)
@@ -45,8 +57,17 @@ class AttendanceBoard extends Component
             ->whereDate('enrollment_date', '<=', $this->attendanceDate)
             ->whereIn('academic_year', $allowedAcademicYears)
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%' . $this->search . '%'))
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sort(function (Student $a, Student $b) use ($previousCounts) {
+                $aCount = (int) ($previousCounts[$a->id] ?? 0);
+                $bCount = (int) ($previousCounts[$b->id] ?? 0);
+                if ($aCount === $bCount) {
+                    return strcasecmp($a->name, $b->name);
+                }
+
+                return $bCount <=> $aCount; // higher attendance first
+            })
+            ->values();
 
         $records = Attendance::query()
             ->whereDate('attendance_date', $this->attendanceDate)

@@ -17,6 +17,7 @@ class DueList extends Component
     public string $sectionFilter = 'all';
     public string $yearFilter = '';
     public string $nameFilter = '';
+    public string $monthFilter = '';
 
     public string $paymentMode = 'Cash';
     public string $paymentDate;
@@ -42,9 +43,9 @@ class DueList extends Component
             ->get()
             ->map(function (Student $student) {
                 $latestInvoiceMonth = $student->feeInvoices->max('billing_month');
-                $asOf = $latestInvoiceMonth
-                    ? Carbon::parse($latestInvoiceMonth)->startOfMonth()
-                    : now()->startOfMonth();
+                $targetMonth = $this->monthFilter ? Carbon::parse($this->monthFilter)->startOfMonth() : null;
+                $asOf = $targetMonth
+                    ?: ($latestInvoiceMonth ? Carbon::parse($latestInvoiceMonth)->startOfMonth() : now()->startOfMonth());
 
                 $summary = $student->dueSummary($asOf);
                 $student->outstanding = $summary['amount'];
