@@ -51,8 +51,8 @@ class ReportCenter extends Component
     public function render()
     {
         $isAssistant = $this->userIsAssistant();
-        $totalStudents = Student::count();
-        $activeStudents = Student::where('status', 'active')->count();
+        $totalStudents = Student::where('is_passed', false)->count();
+        $activeStudents = Student::where('status', 'active')->where('is_passed', false)->count();
         $attendanceThisMonth = Attendance::whereBetween('attendance_date', [now()->startOfMonth(), now()->endOfMonth()])
             ->count();
         $totalFees = FeePayment::sum('amount');
@@ -74,6 +74,7 @@ class ReportCenter extends Component
 
         $studentReportOptions = Student::query()
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->where('class_level', $this->studentReportClass)
             ->where('section', $this->studentReportSection)
             ->orderBy('name')

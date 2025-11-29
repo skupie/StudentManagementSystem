@@ -15,6 +15,7 @@ Route::middleware([
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::view('/students', 'pages.students')->name('students.index');
     Route::get('/students/export/excel', StudentExportController::class)->middleware('role:admin,director')->name('students.export.excel');
+    Route::view('/transfer', 'pages.transfer')->middleware('role:admin,director,lead_instructor,instructor')->name('students.transfer');
     Route::view('/attendance', 'pages.attendance')->name('attendance.index');
     Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin,director')->name('attendance.overview');
     Route::view('/holidays', 'pages.holidays')->middleware('role:admin,director,assistant')->name('holidays.index');

@@ -25,6 +25,7 @@ class AttendanceOverview extends Component
         $query = Attendance::query()
             ->with(['student', 'linkedNote'])
             ->whereDate('attendance_date', $date->toDateString())
+            ->whereHas('student', fn ($q) => $q->where('is_passed', false))
             ->when($this->filterClass !== 'all', function ($builder) {
                 $builder->whereHas('student', fn ($sub) => $sub->where('class_level', $this->filterClass));
             })

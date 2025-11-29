@@ -64,6 +64,7 @@ class WeeklyExamBoard extends Component
 
         $students = Student::query()
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->where('class_level', $formClass)
             ->where('section', $formSection)
             ->orderBy('name')

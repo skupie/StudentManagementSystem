@@ -3,6 +3,7 @@
 namespace App\Livewire\Teachers;
 
 use App\Models\Teacher;
+use App\Support\AcademyOptions;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -16,14 +17,19 @@ class TeacherDirectory extends Component
     public array $form = [
         'name' => '',
         'subject' => '',
+        'subjects' => [],
         'payment' => '',
         'contact_number' => '',
         'is_active' => true,
         'note' => '',
+        'available_days' => [],
     ];
 
     public function render()
     {
+        $dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+        $subjectOptions = $this->subjectOptions();
+
         $teachers = Teacher::query()
             ->when($this->statusFilter !== 'all', function ($query) {
                 $query->where('is_active', $this->statusFilter === 'active');
@@ -44,6 +50,8 @@ class TeacherDirectory extends Component
             'teachers' => $teachers,
             'hidePayment' => $hidePayment,
             'canCreate' => $this->canManage(),
+            'dayOptions' => $dayOptions,
+            'subjectOptions' => $subjectOptions,
         ]);
     }
 
@@ -52,30 +60,41 @@ class TeacherDirectory extends Component
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:255'],
             'form.subject' => ['nullable', 'string', 'max:255'],
+            'form.subjects' => ['array'],
+            'form.subjects.*' => ['string'],
             'form.payment' => ['nullable', 'numeric', 'min:0'],
             'form.contact_number' => ['nullable', 'string', 'max:50'],
             'form.is_active' => ['required', 'boolean'],
             'form.note' => ['nullable', 'string'],
+            'form.available_days' => ['array'],
+            'form.available_days.*' => ['in:Saturday,Sunday,Monday,Tuesday,Wednesday,Thursday'],
         ])['form'];
+
+        $subjects = array_values(array_filter($data['subjects'] ?? []));
+        $primarySubject = $subjects[0] ?? ($data['subject'] ?? null);
 
         if ($this->editingId) {
             Teacher::whereKey($this->editingId)->update([
                 'name' => $data['name'],
-                'subject' => $data['subject'],
+                'subject' => $primarySubject,
+                'subjects' => $subjects,
                 'payment' => $data['payment'] ?: null,
                 'contact_number' => $data['contact_number'],
                 'is_active' => (bool) $data['is_active'],
                 'note' => $data['note'],
+                'available_days' => array_values($data['available_days'] ?? []),
             ]);
         } else {
             Teacher::create([
                 'name' => $data['name'],
-                'subject' => $data['subject'],
+                'subject' => $primarySubject,
+                'subjects' => $subjects,
                 'payment' => $data['payment'] ?: null,
                 'contact_number' => $data['contact_number'],
                 'is_active' => (bool) $data['is_active'],
                 'note' => $data['note'],
                 'created_by' => auth()->id(),
+                'available_days' => array_values($data['available_days'] ?? []),
             ]);
         }
 
@@ -95,10 +114,12 @@ class TeacherDirectory extends Component
         $this->form = [
             'name' => '',
             'subject' => '',
+            'subjects' => [],
             'payment' => '',
             'contact_number' => '',
             'is_active' => true,
             'note' => '',
+            'available_days' => [],
         ];
     }
 
@@ -117,10 +138,35 @@ class TeacherDirectory extends Component
         $this->form = [
             'name' => $teacher->name,
             'subject' => $teacher->subject ?? '',
+            'subjects' => $teacher->subjects ?? [],
             'payment' => $teacher->payment ?? '',
             'contact_number' => $teacher->contact_number ?? '',
             'is_active' => (bool) $teacher->is_active,
             'note' => $teacher->note ?? '',
+            'available_days' => $teacher->available_days ?? [],
         ];
+    }
+
+    protected function subjectOptions(): array
+    {
+        $subjects = [];
+        $common = AcademyOptions::subjectsForSection('science');
+        foreach (AcademyOptions::subjects() ?? [] as $key => $label) {
+            $subjects[$key] = $label;
+        }
+        foreach (AcademyOptions::classes() as $classKey => $label) {
+            $byClass = AcademyOptions::subjectsForSection($classKey) ?? [];
+            foreach ($byClass as $key => $subjectLabel) {
+                $subjects[$key] = $subjectLabel;
+            }
+        }
+        foreach (AcademyOptions::sections() as $sectionKey => $label) {
+            $bySection = AcademyOptions::subjectsForSection($sectionKey) ?? [];
+            foreach ($bySection as $key => $subjectLabel) {
+                $subjects[$key] = $subjectLabel;
+            }
+        }
+        $subjects = array_merge($subjects, $common);
+        return collect($subjects)->filter()->unique()->toArray();
     }
 }

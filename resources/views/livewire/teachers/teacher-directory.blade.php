@@ -35,9 +35,16 @@
                     <x-input-error :messages="$errors->get('form.name')" class="mt-1" />
                 </div>
                 <div>
-                    <x-input-label value="Subject" />
-                    <x-text-input type="text" wire:model.defer="form.subject" class="mt-1 block w-full" />
-                    <x-input-error :messages="$errors->get('form.subject')" class="mt-1" />
+                    <x-input-label value="Subjects" />
+                    <div class="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                        @foreach ($subjectOptions as $key => $label)
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" wire:model.defer="form.subjects" value="{{ $key }}" class="rounded border-gray-300 text-indigo-600">
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <x-input-error :messages="$errors->get('form.subjects')" class="mt-1" />
                 </div>
                 <div>
                     <x-input-label value="Payment" />
@@ -48,6 +55,18 @@
                     <x-input-label value="Contact Number" />
                     <x-text-input type="text" wire:model.defer="form.contact_number" class="mt-1 block w-full" />
                     <x-input-error :messages="$errors->get('form.contact_number')" class="mt-1" />
+                </div>
+                <div>
+                    <x-input-label value="Available Days (manual)" />
+                    <div class="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-32 overflow-y-auto">
+                        @foreach ($dayOptions as $day)
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" wire:model.defer="form.available_days" value="{{ $day }}" class="rounded border-gray-300 text-indigo-600">
+                                <span>{{ $day }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <x-input-error :messages="$errors->get('form.available_days')" class="mt-1" />
                 </div>
                 <div class="md:col-span-3">
                     <x-input-label value="Note" />
@@ -78,6 +97,7 @@
                     <th class="px-4 py-2">Name</th>
                     <th class="px-4 py-2">Subject</th>
                     <th class="px-4 py-2">Status</th>
+                    <th class="px-4 py-2">Days</th>
                     @unless($hidePayment)
                         <th class="px-4 py-2">Payment</th>
                     @endunless
@@ -95,11 +115,22 @@
                                 {{ $teacher->name }}
                             </button>
                         </td>
-                        <td class="px-4 py-2">{{ $teacher->subject ?? '—' }}</td>
+                        <td class="px-4 py-2">
+                            @php($subjects = $teacher->subjects ?? [])
+                            {{ !empty($subjects) ? implode(', ', $subjects) : ($teacher->subject ?? '—') }}
+                        </td>
                         <td class="px-4 py-2">
                             <span class="px-2 py-1 rounded-full text-xs {{ $teacher->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
                                 {{ $teacher->is_active ? 'Active' : 'Inactive' }}
                             </span>
+                        </td>
+                        <td class="px-4 py-2 text-xs text-gray-700">
+                            @php($days = $teacher->available_days ?? [])
+                            @if (!empty($days))
+                                {{ implode(', ', $days) }}
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
                         </td>
                         @unless($hidePayment)
                             <td class="px-4 py-2">{{ $teacher->payment ? number_format($teacher->payment, 2) : '—' }}</td>
@@ -121,7 +152,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $hidePayment ? 4 : 5 }}" class="px-4 py-6 text-center text-gray-500">
+                        <td colspan="{{ $hidePayment ? 5 : 6 }}" class="px-4 py-6 text-center text-gray-500">
                             No teachers found.
                         </td>
                     </tr>

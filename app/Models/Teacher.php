@@ -13,16 +13,20 @@ class Teacher extends Model
     protected $fillable = [
         'name',
         'subject',
+        'subjects',
         'payment',
         'contact_number',
         'is_active',
         'note',
         'created_by',
+        'available_days',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'payment' => 'decimal:2',
+        'available_days' => 'array',
+        'subjects' => 'array',
     ];
 
     public function creator(): BelongsTo

@@ -9,7 +9,8 @@
             <select wire:model.live="statusFilter" class="mt-1 block w-full rounded-md border-gray-300">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="all">All</option>
+                <option value="passed">Passed</option>
+                <option value="all">All (excluding passed)</option>
             </select>
         </div>
         <div>
@@ -117,6 +118,14 @@
             </div>
             <x-input-error :messages="$errors->get('form.full_payment_override')" class="mt-1" />
         </div>
+        <div>
+            <x-input-label value="Passed (exclude from active/inactive)" />
+            <div class="flex items-center mt-2">
+                <input type="checkbox" wire:model.defer="form.is_passed" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="ml-2 text-sm text-gray-600">Mark as passed</span>
+            </div>
+            <x-input-error :messages="$errors->get('form.is_passed')" class="mt-1" />
+        </div>
 
         <div class="md:col-span-3">
             <x-input-label value="Notes" />
@@ -145,6 +154,9 @@
                     <th class="px-4 py-2">Phone</th>
                     <th class="px-4 py-2">Monthly Fee</th>
                     <th class="px-4 py-2">Outstanding</th>
+                    @if ($statusFilter === 'passed')
+                        <th class="px-4 py-2">Passing Year</th>
+                    @endif
                     <th class="px-4 py-2">Status</th>
                     <th class="px-4 py-2 text-right">Actions</th>
                 </tr>
@@ -168,10 +180,18 @@
                         <td class="px-4 py-2 {{ $outstanding > 0 ? 'text-red-600 font-semibold' : 'text-green-600' }}">
                             ৳ {{ number_format($outstanding, 2) }}
                         </td>
-                        <td class="px-4 py-2">
+                        @if ($statusFilter === 'passed')
+                            <td class="px-4 py-2">
+                                {{ $student->passed_year ?? '-' }}
+                            </td>
+                        @endif
+                        <td class="px-4 py-2 space-y-1">
                             <span class="px-3 py-1 rounded-full text-xs {{ $student->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($student->status) }}
                             </span>
+                            @if($student->is_passed)
+                                <span class="px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">Passed</span>
+                            @endif
                         </td>
                         <td class="px-4 py-2 text-right space-x-2">
                             <a href="tel:{{ $student->phone_number }}" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50">
@@ -180,13 +200,22 @@
                             <x-secondary-button wire:click="edit({{ $student->id }})" type="button" class="text-xs">
                                 {{ __('Edit') }}
                             </x-secondary-button>
-                            @if ($student->status === 'active')
-                                <x-secondary-button wire:click="promptDeactivate({{ $student->id }})" type="button" class="text-xs">
-                                    {{ __('Deactivate') }}
+                            @if (! $student->is_passed)
+                                @if ($student->status === 'active')
+                                    <x-secondary-button wire:click="promptDeactivate({{ $student->id }})" type="button" class="text-xs">
+                                        {{ __('Deactivate') }}
+                                    </x-secondary-button>
+                                @else
+                                    <x-secondary-button wire:click="toggleStatus({{ $student->id }})" type="button" class="text-xs">
+                                        {{ __('Activate') }}
+                                    </x-secondary-button>
+                                @endif
+                                <x-secondary-button wire:click="promptMarkPassed({{ $student->id }})" type="button" class="text-xs">
+                                    {{ __('Mark Passed') }}
                                 </x-secondary-button>
                             @else
-                                <x-secondary-button wire:click="toggleStatus({{ $student->id }})" type="button" class="text-xs">
-                                    {{ __('Activate') }}
+                                <x-secondary-button wire:click="promptUnmarkPassed({{ $student->id }})" type="button" class="text-xs">
+                                    {{ __('Unmark Passed') }}
                                 </x-secondary-button>
                             @endif
                             <x-secondary-button wire:click="showAttendanceHistory({{ $student->id }})" type="button" class="text-xs">
@@ -216,8 +245,8 @@
     </div>
 
     @if ($attendanceStudentId)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-4">
+        <div class="fixed inset-0 z-[1000] bg-black bg-opacity-50 flex items-start justify-center overflow-y-auto p-4">
+            <div class="bg-white rounded-lg shadow-xl md:w-[48%] max-w-4xl mt-10 h-[40vh] p-6 overflow-y-auto">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
                     <h3 class="text-lg font-semibold text-gray-800">Attendance History</h3>
                     <div class="flex items-center gap-4 text-sm">
@@ -317,6 +346,26 @@
                 <div class="flex justify-end gap-3">
                     <x-secondary-button type="button" wire:click="cancelDeactivate">Cancel</x-secondary-button>
                     <x-danger-button type="button" wire:click="confirmDeactivate">Deactivate</x-danger-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if (! is_null($confirmingPassId ?? null))
+        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md mx-auto p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">{{ $confirmingPassModeMark ? 'Confirm Mark Passed' : 'Confirm Unmark Passed' }}</h3>
+                    <button wire:click="cancelPassConfirm" class="text-gray-500 hover:text-gray-700">&times;</button>
+                </div>
+                <p class="text-sm text-gray-700">
+                    {{ $confirmingPassModeMark ? 'Mark' : 'Remove' }} <span class="font-semibold">{{ $confirmingPassName }}</span> as passed?
+                </p>
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="cancelPassConfirm">Cancel</x-secondary-button>
+                    <x-danger-button type="button" wire:click="confirmPassAction">
+                        {{ $confirmingPassModeMark ? 'Mark Passed' : 'Unmark Passed' }}
+                    </x-danger-button>
                 </div>
             </div>
         </div>

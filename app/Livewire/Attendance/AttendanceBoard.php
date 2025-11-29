@@ -31,11 +31,19 @@ class AttendanceBoard extends Component
         $isWeekend = $this->isWeekend();
         $isHoliday = $this->isHoliday();
 
+        $attendanceYear = Carbon::parse($this->attendanceDate)->year;
+        $allowedAcademicYears = [
+            ($attendanceYear - 1) . '-' . $attendanceYear,
+            $attendanceYear . '-' . ($attendanceYear + 1),
+        ];
+
         $students = Student::query()
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->where('class_level', $this->selectedClass)
             ->where('section', $this->selectedSection)
             ->whereDate('enrollment_date', '<=', $this->attendanceDate)
+            ->whereIn('academic_year', $allowedAcademicYears)
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->orderBy('name')
             ->get();

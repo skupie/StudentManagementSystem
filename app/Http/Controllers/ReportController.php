@@ -92,6 +92,7 @@ class ReportController extends Controller
         $sectionsToProcess = $section === 'all'
             ? Student::query()
                 ->where('status', 'active')
+                ->where('is_passed', false)
                 ->where('class_level', $class)
                 ->pluck('section')
                 ->filter()
@@ -713,6 +714,7 @@ class ReportController extends Controller
     {
         $students = Student::query()
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->where('class_level', $class)
             ->when($section !== 'all', fn ($q) => $q->where('section', $section))
             ->orderBy('name')

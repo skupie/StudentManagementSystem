@@ -39,6 +39,11 @@
                         <x-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.index')">
                             {{ __('Students') }}
                         </x-nav-link>
+                        @if (in_array($navRole, ['admin', 'director', 'lead_instructor', 'instructor']))
+                            <x-nav-link href="{{ route('students.transfer') }}" :active="request()->routeIs('students.transfer')">
+                                {{ __('Transfer') }}
+                            </x-nav-link>
+                        @endif
                         <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.index')">
                             {{ __('Attendance') }}
                         </x-nav-link>
@@ -247,12 +252,15 @@
                         {{ __('Management Log') }}
                     </x-responsive-nav-link>
                 @endif
-                @if (in_array($navRole, ['admin', 'director']))
+                @if (in_array($navRole, ['admin', 'director', 'lead_instructor', 'instructor']))
                     <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                         {{ __('Attendance Log') }}
                     </x-responsive-nav-link>
                     <x-responsive-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.index')">
                         {{ __('Holidays') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link href="{{ route('students.transfer') }}" :active="request()->routeIs('students.transfer')">
+                        {{ __('Transfer') }}
                     </x-responsive-nav-link>
                 @endif
                 <x-responsive-nav-link href="{{ route('fees.index') }}" :active="request()->routeIs('fees.index')">

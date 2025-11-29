@@ -17,7 +17,7 @@ class StudentManager extends Component
     #[Validate('nullable|string|max:255')]
     public string $search = '';
 
-    #[Validate('required|in:all,active,inactive')]
+    #[Validate('required|in:all,active,inactive,passed')]
     public string $statusFilter = 'active';
     #[Validate('required')]
     public string $classFilter = 'all';
@@ -36,6 +36,8 @@ class StudentManager extends Component
         'full_payment_override' => false,
         'enrollment_date' => '',
         'status' => 'active',
+        'is_passed' => false,
+        'passed_year' => null,
         'notes' => '',
     ];
 
@@ -53,6 +55,9 @@ class StudentManager extends Component
     public string $confirmingDeleteName = '';
     public ?int $confirmingDeactivateId = null;
     public string $confirmingDeactivateName = '';
+    public ?int $confirmingPassId = null;
+    public string $confirmingPassName = '';
+    public bool $confirmingPassModeMark = true;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -72,6 +77,7 @@ class StudentManager extends Component
             'form.full_payment_override' => ['boolean'],
             'form.enrollment_date' => ['required', 'date'],
             'form.status' => ['required', 'in:active,inactive'],
+            'form.is_passed' => ['boolean'],
             'form.notes' => ['nullable', 'string'],
         ];
     }
@@ -83,8 +89,14 @@ class StudentManager extends Component
                 $sub->where('name', 'like', '%' . $this->search . '%')
                     ->orWhere('phone_number', 'like', '%' . $this->search . '%');
             }))
-            ->when($this->statusFilter !== 'all', function ($query) {
-                $query->where('status', $this->statusFilter);
+            ->when($this->statusFilter === 'passed', function ($query) {
+                $query->where('is_passed', true);
+            })
+            ->when($this->statusFilter !== 'all' && $this->statusFilter !== 'passed', function ($query) {
+                $query->where('is_passed', false)->where('status', $this->statusFilter);
+            })
+            ->when($this->statusFilter === 'all', function ($query) {
+                $query->where('is_passed', false);
             })
             ->when($this->classFilter !== 'all', function ($query) {
                 $query->where('class_level', $this->classFilter);
@@ -164,6 +176,8 @@ class StudentManager extends Component
             'full_payment_override' => (bool) $student->full_payment_override,
             'enrollment_date' => optional($student->enrollment_date)->format('Y-m-d'),
             'status' => $student->status,
+            'is_passed' => (bool) $student->is_passed,
+            'passed_year' => $student->passed_year,
             'notes' => $student->notes,
         ];
     }
@@ -244,6 +258,57 @@ class StudentManager extends Component
         $this->dispatch('notify', message: 'Student deactivated.');
     }
 
+    public function promptMarkPassed(int $studentId): void
+    {
+        $student = Student::find($studentId);
+        if (! $student || $student->is_passed) {
+            return;
+        }
+
+        $this->confirmingPassId = $student->id;
+        $this->confirmingPassName = $student->name;
+        $this->confirmingPassModeMark = true;
+    }
+
+    public function promptUnmarkPassed(int $studentId): void
+    {
+        $student = Student::find($studentId);
+        if (! $student || ! $student->is_passed) {
+            return;
+        }
+
+        $this->confirmingPassId = $student->id;
+        $this->confirmingPassName = $student->name;
+        $this->confirmingPassModeMark = false;
+    }
+
+    public function cancelPassConfirm(): void
+    {
+        $this->confirmingPassId = null;
+        $this->confirmingPassName = '';
+        $this->confirmingPassModeMark = true;
+    }
+
+    public function confirmPassAction(): void
+    {
+        if (! $this->confirmingPassId) {
+            return;
+        }
+
+        $student = Student::find($this->confirmingPassId);
+        if (! $student) {
+            $this->cancelPassConfirm();
+            return;
+        }
+
+        $student->update([
+            'is_passed' => $this->confirmingPassModeMark,
+            'passed_year' => $this->confirmingPassModeMark ? now()->year : null,
+        ]);
+        $this->cancelPassConfirm();
+        $this->dispatch('notify', message: $this->confirmingPassModeMark ? 'Student marked as passed.' : 'Student marked as current.');
+    }
+
     public function resetForm(): void
     {
         $this->editingId = null;
@@ -258,6 +323,8 @@ class StudentManager extends Component
             'full_payment_override' => false,
             'enrollment_date' => '',
             'status' => 'active',
+            'is_passed' => false,
+            'passed_year' => null,
             'notes' => '',
         ];
     }

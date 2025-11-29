@@ -35,6 +35,7 @@ class Leaderboard extends Component
         $activeGroups = Student::query()
             ->select('class_level', 'section')
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->whereNotNull('class_level')
             ->whereNotNull('section')
             ->distinct()
@@ -50,6 +51,7 @@ class Leaderboard extends Component
             ->selectRaw('students.class_level, students.section, students.name, students.id as student_id, COUNT(*) as total_present')
             ->join('students', 'students.id', '=', 'attendances.student_id')
             ->where('students.status', 'active')
+            ->where('students.is_passed', false)
             ->where('attendances.status', 'present')
             ->whereBetween('attendances.attendance_date', [$rangeStart, $rangeEnd])
             ->groupBy('students.id', 'students.name', 'students.class_level', 'students.section')
@@ -80,6 +82,7 @@ class Leaderboard extends Component
             ->selectRaw('students.class_level, students.section, students.name, students.id as student_id, SUM(weekly_exam_marks.marks_obtained) as total_obtained, SUM(weekly_exam_marks.max_marks) as total_max, COUNT(*) as exam_count')
             ->join('students', 'students.id', '=', 'weekly_exam_marks.student_id')
             ->where('students.status', 'active')
+            ->where('students.is_passed', false)
             ->where(function ($query) {
                 $query->whereNull('weekly_exam_marks.remarks')
                     ->orWhereRaw('LOWER(weekly_exam_marks.remarks) != ?', ['absent']);

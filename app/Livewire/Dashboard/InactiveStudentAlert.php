@@ -23,6 +23,7 @@ class InactiveStudentAlert extends Component
 
         $inactiveStudents = Student::query()
             ->where('status', 'inactive')
+            ->where('is_passed', false)
             ->when($this->classFilter !== 'all', fn ($q) => $q->where('class_level', $this->classFilter))
             ->when($this->sectionFilter !== 'all', fn ($q) => $q->where('section', $this->sectionFilter))
             ->orderBy('name')
@@ -37,6 +38,7 @@ class InactiveStudentAlert extends Component
 
         $limitedAttendanceStudents = Student::query()
             ->where('status', 'active')
+            ->where('is_passed', false)
             ->when($this->classFilter !== 'all', fn ($q) => $q->where('class_level', $this->classFilter))
             ->when($this->sectionFilter !== 'all', fn ($q) => $q->where('section', $this->sectionFilter))
             ->withCount(['attendances as present_count' => function ($query) use ($referenceStart, $referenceEnd) {

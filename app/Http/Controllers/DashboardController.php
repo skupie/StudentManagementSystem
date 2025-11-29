@@ -49,12 +49,14 @@ class DashboardController extends Controller
         ];
 
         $studentCounts = [
-            'total' => Student::count(),
-            'active' => Student::where('status', 'active')->count(),
-            'inactive' => Student::where('status', 'inactive')->count(),
+            'total' => Student::where('is_passed', false)->count(),
+            'active' => Student::where('status', 'active')->where('is_passed', false)->count(),
+            'inactive' => Student::where('status', 'inactive')->where('is_passed', false)->count(),
+            'passed' => Student::where('is_passed', true)->count(),
         ];
 
         $classDistribution = Student::select('class_level', DB::raw('count(*) as total'))
+            ->where('is_passed', false)
             ->groupBy('class_level')
             ->pluck('total', 'class_level');
 

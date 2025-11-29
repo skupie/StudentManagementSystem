@@ -37,7 +37,7 @@
 
                 {{-- Enrollment & Status --}}
                 <div class="bg-white rounded-lg shadow p-4 space-y-4">
-                    <div class="grid md:grid-cols-3 gap-4">
+                    <div class="grid md:grid-cols-4 gap-4">
                         <div>
                             <p class="text-sm text-gray-500">Total Students</p>
                             <p class="text-2xl font-bold">{{ $studentCounts['total'] }}</p>
@@ -49,6 +49,10 @@
                         <div>
                             <p class="text-sm text-gray-500">Inactive</p>
                             <p class="text-2xl font-bold text-gray-600">{{ $studentCounts['inactive'] }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Passed</p>
+                            <p class="text-2xl font-bold text-indigo-600">{{ $studentCounts['passed'] }}</p>
                         </div>
                     </div>
                     <div class="grid md:grid-cols-{{ max(1, $classDistribution->count()) }} gap-4">
@@ -185,7 +189,7 @@
                     $hscOneCount = $classDistribution['hsc_1'] ?? 0;
                     $hscTwoCount = $classDistribution['hsc_2'] ?? 0;
                 @endphp
-                <div class="grid md:grid-cols-3 gap-4">
+                <div class="grid md:grid-cols-4 gap-4">
                     <div class="p-4 bg-white rounded-lg shadow">
                         <p class="text-sm text-gray-500">Total Students</p>
                         <p class="text-2xl font-bold text-gray-800">{{ $studentCounts['total'] }}</p>
@@ -197,6 +201,10 @@
                     <div class="p-4 bg-white rounded-lg shadow">
                         <p class="text-sm text-gray-500">Inactive</p>
                         <p class="text-2xl font-bold text-gray-600">{{ $studentCounts['inactive'] }}</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow">
+                        <p class="text-sm text-gray-500">Passed</p>
+                        <p class="text-2xl font-bold text-indigo-600">{{ $studentCounts['passed'] }}</p>
                     </div>
                 </div>
 
