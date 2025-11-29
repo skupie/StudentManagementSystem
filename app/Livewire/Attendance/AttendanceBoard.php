@@ -32,13 +32,14 @@ class AttendanceBoard extends Component
         $isWeekend = $this->isWeekend();
         $isHoliday = $this->isHoliday();
 
-        $attendanceYear = Carbon::parse($this->attendanceDate)->year;
-        $allowedAcademicYears = [
-            ($attendanceYear - 1) . '-' . $attendanceYear,
-            $attendanceYear . '-' . ($attendanceYear + 1),
-        ];
-
         $currentDate = Carbon::parse($this->attendanceDate);
+        $currentSessionStart = $currentDate->month >= 6
+            ? $currentDate->year
+            : $currentDate->year - 1;
+        $currentSession = $currentSessionStart . '-' . ($currentSessionStart + 1);
+        $previousSession = ($currentSessionStart - 1) . '-' . $currentSessionStart;
+        $allowedAcademicYears = [$previousSession, $currentSession];
+
         $prevStart = $currentDate->copy()->subMonth()->startOfMonth();
         $prevEnd = $currentDate->copy()->subMonth()->endOfMonth();
 

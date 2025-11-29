@@ -13,6 +13,7 @@ class UserManager extends Component
     use WithPagination;
 
     public string $search = '';
+    public string $pinReset = '';
 
     public array $form = [
         'name' => '',
@@ -89,5 +90,19 @@ class UserManager extends Component
         $user->save();
 
         $this->dispatch('notify', message: 'User status updated.');
+    }
+
+    public function resetTransferPin(): void
+    {
+        abort_unless(auth()->user()?->role === 'admin', 403);
+
+        $this->validate([
+            'pinReset' => ['required', 'string', 'min:4', 'max:10'],
+        ]);
+
+        \Illuminate\Support\Facades\Cache::forever('transfer_pin_override', $this->pinReset);
+        $this->pinReset = '';
+
+        $this->dispatch('notify', message: 'Transfer PIN reset successfully.');
     }
 }

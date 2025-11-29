@@ -41,6 +41,25 @@
         </div>
     </div>
 
+    @if (auth()->user()?->role === 'admin')
+        <div class="bg-white shadow rounded-lg p-4 space-y-4">
+            <h3 class="font-semibold text-gray-800">Transfer PIN</h3>
+            <p class="text-sm text-gray-600">Reset the PIN required to access the Transfer page. (Admin only)</p>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label value="New PIN" />
+                    <x-text-input type="password" wire:model.defer="pinReset" class="mt-1 block w-full" />
+                    <x-input-error :messages="$errors->get('pinReset')" class="mt-1" />
+                </div>
+            </div>
+            <div class="text-right">
+                <x-primary-button type="button" wire:click="resetTransferPin">
+                    Update Transfer PIN
+                </x-primary-button>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white shadow rounded-lg p-4 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <h3 class="font-semibold text-gray-800">Members</h3>
