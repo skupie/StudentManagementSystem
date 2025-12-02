@@ -244,7 +244,10 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2">
                                 <div class="font-semibold text-gray-900">{{ $invoice->student->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $invoice->student->phone_number }}</div>
+                                <div class="text-xs text-gray-500">
+                                    {{ \App\Support\AcademyOptions::classLabel($invoice->student->class_level ?? '') }},
+                                    {{ \App\Support\AcademyOptions::sectionLabel($invoice->student->section ?? '') }}
+                                </div>
                             </td>
                             <td class="px-4 py-2">{{ \Carbon\Carbon::parse($invoice->billing_month)->format('M Y') }}</td>
                             <td class="px-4 py-2">

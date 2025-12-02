@@ -185,10 +185,15 @@
                                 {{ $student->passed_year ?? '-' }}
                             </td>
                         @endif
-                        <td class="px-4 py-2 space-y-1">
+                        <td class="px-4 py-2 space-y-1 text-center">
                             <span class="px-3 py-1 rounded-full text-xs {{ $student->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($student->status) }}
                             </span>
+                            @if($student->status === 'inactive' && $student->inactive_at)
+                                <div class="text-xs text-red-600 font-semibold">
+                                    {{ \Carbon\Carbon::parse($student->inactive_at)->format('d M Y') }}
+                                </div>
+                            @endif
                             @if($student->is_passed)
                                 <span class="px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">Passed</span>
                             @endif

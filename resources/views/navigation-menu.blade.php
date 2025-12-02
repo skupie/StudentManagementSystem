@@ -252,7 +252,7 @@
                         {{ __('Management Log') }}
                     </x-responsive-nav-link>
                 @endif
-                @if (in_array($navRole, ['admin', 'director', 'lead_instructor', 'instructor']))
+                @if (in_array($navRole, ['admin', 'director']))
                     <x-responsive-nav-link href="{{ route('attendance.overview') }}" :active="request()->routeIs('attendance.overview')">
                         {{ __('Attendance Log') }}
                     </x-responsive-nav-link>

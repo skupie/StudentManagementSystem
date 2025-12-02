@@ -147,6 +147,13 @@ class StudentManager extends Component
         $payload = $this->form;
         $payload['created_by'] = auth()->id();
 
+        $existing = $this->editingId ? Student::find($this->editingId) : null;
+        if ($payload['status'] === 'inactive') {
+            $payload['inactive_at'] = $existing?->inactive_at ?? now();
+        } else {
+            $payload['inactive_at'] = null;
+        }
+
         $student = Student::updateOrCreate(
             ['id' => $this->editingId],
             $payload
@@ -211,6 +218,7 @@ class StudentManager extends Component
     {
         $student = Student::findOrFail($studentId);
         $student->status = $student->status === 'active' ? 'inactive' : 'active';
+        $student->inactive_at = $student->status === 'inactive' ? now() : null;
         $student->save();
 
         if ($student->status === 'active') {
@@ -251,6 +259,7 @@ class StudentManager extends Component
 
         if ($student->status === 'active') {
             $student->status = 'inactive';
+            $student->inactive_at = $student->inactive_at ?? now();
             $student->save();
         }
 

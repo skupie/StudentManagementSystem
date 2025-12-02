@@ -23,6 +23,7 @@ class Student extends Model
         'full_payment_override',
         'enrollment_date',
         'status',
+        'inactive_at',
         'is_passed',
         'passed_year',
         'notes',
@@ -34,6 +35,7 @@ class Student extends Model
         'monthly_fee' => 'decimal:2',
         'full_payment_override' => 'boolean',
         'is_passed' => 'boolean',
+        'inactive_at' => 'datetime',
     ];
 
     public function creator(): BelongsTo
