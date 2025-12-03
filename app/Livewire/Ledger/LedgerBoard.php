@@ -55,15 +55,22 @@ class LedgerBoard extends Component
         $incomeTotal = (clone $incomeQuery)->sum('amount');
         $expenseTotal = (clone $expenseQuery)->sum('amount');
 
+        $rangeStartDate = \Carbon\Carbon::parse($this->rangeStart);
+        $prevStart = $rangeStartDate->copy()->subMonth()->startOfMonth();
+        $prevEnd = $rangeStartDate->copy()->subMonth()->endOfMonth();
+        $carryForward = FeePayment::whereBetween('payment_date', [$prevStart, $prevEnd])->sum('amount')
+            - Expense::whereBetween('expense_date', [$prevStart, $prevEnd])->sum('amount');
+
         $payments = $incomeQuery->take(15)->get();
         $expenses = $expenseQuery->take(15)->get();
 
         return view('livewire.ledger.ledger-board', [
             'payments' => $payments,
             'expenses' => $expenses,
-            'incomeTotal' => $incomeTotal,
+            'incomeTotal' => $incomeTotal + $carryForward,
             'expenseTotal' => $expenseTotal,
-            'netTotal' => ($this->initialDeposit + $incomeTotal) - $expenseTotal,
+            'carryForward' => $carryForward,
+            'netTotal' => ($this->initialDeposit + $carryForward + $incomeTotal) - $expenseTotal,
             'expenseCategories' => config('academy.expense_categories'),
             'initialDeposit' => $this->initialDeposit,
         ]);

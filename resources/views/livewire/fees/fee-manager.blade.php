@@ -131,6 +131,10 @@
 
             <div class="pt-4 border-t">
                 <h4 class="font-semibold text-gray-800 mb-2 text-sm uppercase tracking-wide">Recent Payments</h4>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-2">
+                    <x-text-input type="text" wire:model.live.debounce.300ms="recentSearch" class="mt-1 block w-full md:w-64" placeholder="Search by name or receipt" />
+                    <div class="text-xs text-gray-500">{{ $recentPayments->total() }} payments</div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm divide-y divide-gray-200">
                         <thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -183,6 +187,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-2">
+                    {{ $recentPayments->links() }}
                 </div>
             </div>
         </div>

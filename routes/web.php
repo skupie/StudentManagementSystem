@@ -18,6 +18,7 @@ Route::middleware([
     Route::view('/transfer', 'pages.transfer')->middleware('role:admin,director,lead_instructor,instructor')->name('students.transfer');
     Route::view('/attendance', 'pages.attendance')->name('attendance.index');
     Route::view('/attendance-overview', 'pages.attendance-overview')->middleware('role:admin,director')->name('attendance.overview');
+    Route::view('/teacher-payments', 'pages.teacher-payments')->middleware('role:admin,director')->name('teacher.payments');
     Route::view('/holidays', 'pages.holidays')->middleware('role:admin,director,assistant')->name('holidays.index');
     Route::view('/fees', 'pages.fees')->name('fees.index');
     Route::view('/due-list', 'pages.due-list')->name('due-list.index');

@@ -41,6 +41,8 @@ class FeeManager extends Component
         'scholarship_amount' => '',
     ];
 
+    public string $recentSearch = '';
+
     public ?int $payingInvoiceId = null;
     public ?int $editingPaymentId = null;
     public bool $showPaymentLogModal = false;
@@ -79,10 +81,15 @@ class FeeManager extends Component
             ->get();
 
         $recentPayments = FeePayment::with(['student', 'invoice.student'])
+            ->when($this->recentSearch, function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereHas('student', fn ($s) => $s->where('name', 'like', '%' . $this->recentSearch . '%'))
+                        ->orWhere('receipt_number', 'like', '%' . $this->recentSearch . '%');
+                });
+            })
             ->latest('payment_date')
             ->latest('id')
-            ->limit(10)
-            ->get();
+            ->paginate(10, ['*'], 'paymentsPage');
 
         $invoices = FeeInvoice::query()
             ->with('student')
@@ -149,6 +156,11 @@ class FeeManager extends Component
     public function updatedFilterMonth(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedRecentSearch(): void
+    {
+        $this->resetPage('paymentsPage');
     }
 
     public function createInvoice(): void

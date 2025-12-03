@@ -23,6 +23,7 @@
             <div class="p-4 bg-green-50 rounded-lg">
                 <div class="text-sm text-gray-500">Income</div>
                 <div class="text-2xl font-bold text-green-700">৳ {{ number_format($incomeTotal, 2) }}</div>
+                <p class="text-xs text-gray-500 mt-1">Includes carry-forward: ৳ {{ number_format($carryForward, 2) }}</p>
             </div>
             <div class="p-4 bg-red-50 rounded-lg">
                 <div class="text-sm text-gray-500">Expenses</div>
