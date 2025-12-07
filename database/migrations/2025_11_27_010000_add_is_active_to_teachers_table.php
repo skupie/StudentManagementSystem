@@ -13,6 +13,10 @@ return new class extends Migration
         }
 
         Schema::table('teachers', function (Blueprint $table) {
+            if (! Schema::hasColumn('teachers', 'contact_number')) {
+                $table->string('contact_number', 50)->nullable()->after('subject');
+            }
+
             if (! Schema::hasColumn('teachers', 'is_active')) {
                 $table->boolean('is_active')->default(true)->after('contact_number');
             }
@@ -21,6 +25,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('teachers')) {
+            return;
+        }
+
         Schema::table('teachers', function (Blueprint $table) {
             if (Schema::hasColumn('teachers', 'is_active')) {
                 $table->dropColumn('is_active');

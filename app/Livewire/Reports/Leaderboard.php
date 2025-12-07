@@ -12,6 +12,7 @@ use Livewire\Component;
 class Leaderboard extends Component
 {
     public string $monthFilter = '';
+    public string $pendingMonth = '';
 
     protected $queryString = [
         'monthFilter' => ['as' => 'month', 'except' => null],
@@ -20,11 +21,7 @@ class Leaderboard extends Component
     public function mount(): void
     {
         $this->monthFilter = $this->sanitizeMonth($this->monthFilter) ?: now()->format('Y-m');
-    }
-
-    public function updatedMonthFilter($value): void
-    {
-        $this->monthFilter = $this->sanitizeMonth($value) ?: now()->format('Y-m');
+        $this->pendingMonth = $this->monthFilter;
     }
 
     public function render()
@@ -126,7 +123,16 @@ class Leaderboard extends Component
             'groups' => $groups,
             'hasAttendance' => $hasAttendance,
             'monthLabel' => $rangeStart->format('M Y'),
+            'pendingMonth' => $this->pendingMonth,
         ]);
+    }
+
+    public function applyMonth(): void
+    {
+        $this->monthFilter = $this->sanitizeMonth($this->pendingMonth) ?: now()->format('Y-m');
+        $this->pendingMonth = $this->monthFilter;
+        // Trigger a full page reload with the selected month.
+        redirect()->route('leaderboard.index', ['month' => $this->monthFilter]);
     }
 
     protected function sanitizeMonth(?string $value): ?string

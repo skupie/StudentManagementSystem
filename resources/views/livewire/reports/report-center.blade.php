@@ -95,6 +95,10 @@
                     <x-input-label value="Year" />
                     <x-text-input type="text" wire:model.live="dueYear" class="mt-1 block w-full" placeholder="2024" />
                 </div>
+                <div>
+                    <x-input-label value="Month (optional)" />
+                    <x-text-input type="month" wire:model.live="dueMonth" class="mt-1 block w-full" />
+                </div>
                 <div class="flex gap-2">
                     <x-secondary-button type="button" wire:click="downloadDueReport" class="w-full justify-center">
                         PDF

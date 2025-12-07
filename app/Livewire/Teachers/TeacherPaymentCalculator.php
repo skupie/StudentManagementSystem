@@ -4,6 +4,7 @@ namespace App\Livewire\Teachers;
 
 use App\Models\Expense;
 use App\Models\Teacher;
+use App\Models\TeacherPayment;
 use Livewire\Component;
 
 class TeacherPaymentCalculator extends Component
@@ -12,22 +13,30 @@ class TeacherPaymentCalculator extends Component
     public string $expenseDate;
     public string $note = '';
     public bool $saved = false;
+    public string $payoutMonth;
 
     public function mount(): void
     {
         $this->expenseDate = now()->format('Y-m-d');
+        $this->payoutMonth = now()->format('Y-m');
     }
 
     public function render()
     {
+        $monthDate = \Carbon\Carbon::parse($this->payoutMonth . '-01')->startOfMonth();
+        $existing = TeacherPayment::whereDate('payout_month', $monthDate)->get()->keyBy('teacher_id');
+
         $teachers = Teacher::query()
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
-            ->map(function (Teacher $teacher) {
-                $count = (int) ($this->classCounts[$teacher->id] ?? 0);
+            ->map(function (Teacher $teacher) use ($existing) {
+                $existingPayment = $existing[$teacher->id] ?? null;
+                $inputCount = $this->classCounts[$teacher->id] ?? $existingPayment?->class_count ?? 0;
+                $count = (int) $inputCount;
                 $teacher->calculated_total = round($count * (float) ($teacher->payment ?? 0), 2);
                 $teacher->input_count = $count;
+                $teacher->existing_payment = $existingPayment;
                 return $teacher;
             });
 
@@ -36,44 +45,63 @@ class TeacherPaymentCalculator extends Component
         return view('livewire.teachers.teacher-payment-calculator', [
             'teachers' => $teachers,
             'grandTotal' => $grandTotal,
+            'existingPayments' => $existing,
         ]);
     }
 
     public function save(): void
     {
+        $monthDate = \Carbon\Carbon::parse($this->payoutMonth . '-01')->startOfMonth();
+
         $teachers = Teacher::whereIn('id', array_keys($this->classCounts))->get()->keyBy('id');
-        $entries = [];
+        $savedAny = false;
+
         foreach ($this->classCounts as $teacherId => $count) {
             $count = (int) $count;
             if ($count <= 0 || ! $teachers->has($teacherId)) {
                 continue;
             }
-
             $teacher = $teachers[$teacherId];
             $amount = round($count * (float) ($teacher->payment ?? 0), 2);
             if ($amount <= 0) {
                 continue;
             }
 
-            $entries[] = [
-                'expense_date' => $this->expenseDate,
+            $expense = Expense::create([
+                'expense_date' => \Carbon\Carbon::parse($this->expenseDate)->toDateString(),
                 'category' => 'Teacher Payment',
                 'amount' => $amount,
-                'description' => trim($this->note) !== '' ? $this->note : "Payment for {$count} classes — {$teacher->name}",
+                'description' => trim($this->note) !== '' ? $this->note : "Payment for {$count} classes — {$teacher->name} ({$monthDate->format('M Y')})",
                 'recorded_by' => auth()->id(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            ]);
+
+            TeacherPayment::updateOrCreate(
+                [
+                    'teacher_id' => $teacherId,
+                    'payout_month' => $monthDate,
+                ],
+                [
+                    'class_count' => $count,
+                    'amount' => $amount,
+                    'expense_id' => $expense->id,
+                    'note' => $this->note,
+                    'logged_at' => now(),
+                ]
+            );
+            $savedAny = true;
         }
 
-        if (empty($entries)) {
-            return;
+        if ($savedAny) {
+            $this->classCounts = [];
+            $this->note = '';
+            $this->saved = true;
+            $this->dispatch('notify', message: 'Teacher payments recorded to ledger.');
         }
+    }
 
-        Expense::insert($entries);
+    public function updatedPayoutMonth(): void
+    {
         $this->classCounts = [];
-        $this->note = '';
-        $this->saved = true;
-        $this->dispatch('notify', message: 'Teacher payments recorded to ledger.');
+        $this->saved = false;
     }
 }

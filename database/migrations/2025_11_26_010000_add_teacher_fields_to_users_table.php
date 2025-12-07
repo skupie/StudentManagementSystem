@@ -8,17 +8,41 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->string('subject')->nullable()->after('role');
-            $table->decimal('payment', 10, 2)->nullable()->after('subject');
-            $table->string('contact_number', 50)->nullable()->after('payment');
+            if (! Schema::hasColumn('users', 'subject')) {
+                $table->string('subject')->nullable()->after('role');
+            }
+
+            if (! Schema::hasColumn('users', 'payment')) {
+                $table->decimal('payment', 10, 2)->nullable()->after('subject');
+            }
+
+            if (! Schema::hasColumn('users', 'contact_number')) {
+                $table->string('contact_number', 50)->nullable()->after('payment');
+            }
         });
     }
 
     public function down(): void
     {
+        if (! Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['subject', 'payment', 'contact_number']);
+            $drop = [];
+            foreach (['subject', 'payment', 'contact_number'] as $col) {
+                if (Schema::hasColumn('users', $col)) {
+                    $drop[] = $col;
+                }
+            }
+            if (! empty($drop)) {
+                $table->dropColumn($drop);
+            }
         });
     }
 };

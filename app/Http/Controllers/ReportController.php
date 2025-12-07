@@ -143,6 +143,9 @@ class ReportController extends Controller
         $class = $request->input('class', 'all');
         $section = $request->input('section', 'all');
         $year = $request->input('year', '');
+        $month = $request->input('month', '');
+        $monthStart = $month ? Carbon::createFromFormat('Y-m', $month)->startOfMonth() : null;
+        $monthEnd = $monthStart ? $monthStart->copy()->endOfMonth() : null;
 
         $students = Student::query()
             ->with(['feePayments' => fn ($q) => $q->orderBy('payment_date')])
@@ -151,10 +154,30 @@ class ReportController extends Controller
             ->when($year, fn ($q) => $q->where('academic_year', 'like', '%' . $year . '%'))
             ->orderBy('name')
             ->get()
-            ->map(function (Student $student) {
-                $summary = $student->dueSummary();
-                $student->outstanding = $summary['amount'];
-                $student->due_months = implode(', ', $summary['months']);
+            ->map(function (Student $student) use ($monthStart, $monthEnd) {
+                if ($monthStart && $monthEnd) {
+                    $invoices = $student->feeInvoices()
+                        ->whereBetween('billing_month', [$monthStart, $monthEnd])
+                        ->get();
+                    $amount = 0;
+                    $months = [];
+                    foreach ($invoices as $invoice) {
+                        if (! $invoice->manual_override) {
+                            $student->adjustInvoiceForAttendance($invoice);
+                        }
+                        $due = max(0, (float) $invoice->amount_due - (float) $invoice->amount_paid);
+                        if ($due > 0.01) {
+                            $amount += $due;
+                            $months[] = Carbon::parse($invoice->billing_month)->format('M Y');
+                        }
+                    }
+                    $student->outstanding = round($amount, 2);
+                    $student->due_months = implode(', ', array_unique($months));
+                } else {
+                    $summary = $student->dueSummary();
+                    $student->outstanding = $summary['amount'];
+                    $student->due_months = implode(', ', $summary['months']);
+                }
                 return $student;
             })
             ->filter(fn (Student $student) => $student->outstanding > 0)
@@ -166,6 +189,7 @@ class ReportController extends Controller
                 'class' => $class,
                 'section' => $section,
                 'year' => $year,
+                'month' => $month,
             ],
             'totalDue' => $students->sum('outstanding'),
         ])->setPaper('a4', 'portrait');
@@ -271,6 +295,9 @@ class ReportController extends Controller
         $class = $request->input('class', 'all');
         $section = $request->input('section', 'all');
         $year = $request->input('year', '');
+        $month = $request->input('month', '');
+        $monthStart = $month ? Carbon::createFromFormat('Y-m', $month)->startOfMonth() : null;
+        $monthEnd = $monthStart ? $monthStart->copy()->endOfMonth() : null;
 
         $students = Student::query()
             ->with(['feePayments' => fn ($q) => $q->orderBy('payment_date')])
@@ -279,8 +306,30 @@ class ReportController extends Controller
             ->when($year, fn ($q) => $q->where('academic_year', 'like', '%' . $year . '%'))
             ->orderBy('name')
             ->get()
-            ->map(function (Student $student) {
-                $summary = $student->dueSummary();
+            ->map(function (Student $student) use ($monthStart, $monthEnd) {
+                if ($monthStart && $monthEnd) {
+                    $invoices = $student->feeInvoices()
+                        ->whereBetween('billing_month', [$monthStart, $monthEnd])
+                        ->get();
+                    $amount = 0;
+                    $months = [];
+                    foreach ($invoices as $invoice) {
+                        if (! $invoice->manual_override) {
+                            $student->adjustInvoiceForAttendance($invoice);
+                        }
+                        $due = max(0, (float) $invoice->amount_due - (float) $invoice->amount_paid);
+                        if ($due > 0.01) {
+                            $amount += $due;
+                            $months[] = Carbon::parse($invoice->billing_month)->format('M Y');
+                        }
+                    }
+                    $summary = [
+                        'amount' => round($amount, 2),
+                        'months' => array_unique($months),
+                    ];
+                } else {
+                    $summary = $student->dueSummary();
+                }
                 return [
                     'name' => $student->name,
                     'class' => AcademyOptions::classLabel($student->class_level),
@@ -293,34 +342,48 @@ class ReportController extends Controller
             ->filter(fn ($row) => $row['outstanding'] > 0)
             ->values();
 
-        $filename = 'due-list-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'due-list-' . now()->format('Ymd-His') . '.xlsx';
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
-
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
         $columns = ['Student Name', 'Class', 'Section', 'Phone', 'Outstanding', 'Due Months'];
+        $sheet->fromArray($columns, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
 
-        $callback = function () use ($columns, $students) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, $columns);
+        $row = 2;
+        foreach ($students as $data) {
+            $sheet->fromArray([
+                $data['name'],
+                $data['class'],
+                $data['section'],
+                $data['phone'],
+                (float) $data['outstanding'],
+                $data['due_months'],
+            ], null, 'A' . $row);
+            $row++;
+        }
 
-            foreach ($students as $row) {
-                fputcsv($handle, [
-                    $row['name'],
-                    $row['class'],
-                    $row['section'],
-                    $row['phone'],
-                    number_format($row['outstanding'], 2),
-                    $row['due_months'],
-                ]);
-            }
+        // Total outstanding
+        $totalDue = $students->sum('outstanding');
+        $sheet->setCellValue('E' . $row, 'Total Outstanding');
+        $sheet->setCellValue('F' . $row, $totalDue);
+        $sheet->getStyle('E' . $row . ':F' . $row)->getFont()->setBold(true)->getColor()->setRGB('B91C1C'); // red
+        $sheet->getStyle('F' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('F2:F' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('E' . $row)->getFont()->setSize(14);
+        $sheet->getStyle('F' . $row)->getFont()->setSize(16);
 
-            fclose($handle);
-        };
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
-        return response()->streamDownload($callback, $filename, $headers);
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     public function weeklyExamsStudent(Request $request)

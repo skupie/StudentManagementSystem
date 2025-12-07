@@ -13,21 +13,17 @@ return new class extends Migration
         }
 
         Schema::table('teachers', function (Blueprint $table) {
-            if (! Schema::hasColumn('teachers', 'subjects')) {
-                $table->json('subjects')->nullable()->after('subject');
+            if (! Schema::hasColumn('teachers', 'payment')) {
+                $table->decimal('payment', 10, 2)->nullable()->after('subject');
             }
         });
     }
 
     public function down(): void
     {
-        if (! Schema::hasTable('teachers')) {
-            return;
-        }
-
         Schema::table('teachers', function (Blueprint $table) {
-            if (Schema::hasColumn('teachers', 'subjects')) {
-                $table->dropColumn('subjects');
+            if (Schema::hasColumn('teachers', 'payment')) {
+                $table->dropColumn('payment');
             }
         });
     }

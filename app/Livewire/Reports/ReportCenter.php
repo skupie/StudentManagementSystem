@@ -20,6 +20,7 @@ class ReportCenter extends Component
     public string $dueClass = 'all';
     public string $dueSection = 'all';
     public string $dueYear = '';
+    public string $dueMonth = '';
 
     public string $financeRangeStart;
     public string $financeRangeEnd;
@@ -46,6 +47,7 @@ class ReportCenter extends Component
         $this->financeRangeEnd = now()->endOfMonth()->format('Y-m-d');
         $this->studentReportMonth = now()->format('Y-m');
         $this->attendanceReportMonth = now()->format('Y-m');
+        $this->dueMonth = '';
     }
 
     public function render()
@@ -130,6 +132,7 @@ class ReportCenter extends Component
             'class' => $this->dueClass,
             'section' => $this->dueSection,
             'year' => $this->dueYear,
+            'month' => $this->dueMonth,
         ]);
     }
 
@@ -143,6 +146,7 @@ class ReportCenter extends Component
             'class' => $this->dueClass,
             'section' => $this->dueSection,
             'year' => $this->dueYear,
+            'month' => $this->dueMonth,
         ]);
     }
 

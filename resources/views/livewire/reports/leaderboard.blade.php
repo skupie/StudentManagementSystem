@@ -14,12 +14,14 @@
                         <x-input-label value="Filter Month" />
                         <x-text-input
                             type="month"
-                            wire:model.live="monthFilter"
-                            value="{{ $monthFilter }}"
+                            wire:model.defer="pendingMonth"
                             wire:key="leaderboard-month-filter"
                             class="mt-1 block w-full sm:w-44"
                         />
                     </div>
+                    <x-primary-button type="button" class="mt-6" wire:click="applyMonth">
+                        {{ __('Go') }}
+                    </x-primary-button>
                     <div class="text-sm text-gray-600">Showing {{ $monthLabel }}</div>
                     <div class="rounded-xl px-4 py-2 text-center min-w-[130px]" style="background-color:#d97706;">
                         <p class="text-xs uppercase tracking-wide text-white">Attendance Stars</p>
