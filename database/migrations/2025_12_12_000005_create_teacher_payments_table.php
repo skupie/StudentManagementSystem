@@ -8,15 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('teachers')) {
-            // Cannot create payments table without teachers
-            return;
-        }
-
-        if (Schema::hasTable('teacher_payments')) {
-            return;
-        }
-
         Schema::create('teacher_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('teacher_id')->constrained()->cascadeOnDelete();
