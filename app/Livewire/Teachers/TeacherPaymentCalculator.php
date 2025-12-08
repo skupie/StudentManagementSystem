@@ -5,6 +5,7 @@ namespace App\Livewire\Teachers;
 use App\Models\Expense;
 use App\Models\Teacher;
 use App\Models\TeacherPayment;
+use App\Models\AuditLog;
 use Livewire\Component;
 
 class TeacherPaymentCalculator extends Component
@@ -71,7 +72,7 @@ class TeacherPaymentCalculator extends Component
                 'expense_date' => \Carbon\Carbon::parse($this->expenseDate)->toDateString(),
                 'category' => 'Teacher Payment',
                 'amount' => $amount,
-                'description' => trim($this->note) !== '' ? $this->note : "Payment for {$count} classes — {$teacher->name} ({$monthDate->format('M Y')})",
+                'description' => trim($this->note) !== '' ? $this->note : "Payment for {$count} classes for {$teacher->name} ({$monthDate->format('M Y')})",
                 'recorded_by' => auth()->id(),
             ]);
 
@@ -86,6 +87,19 @@ class TeacherPaymentCalculator extends Component
                     'expense_id' => $expense->id,
                     'note' => $this->note,
                     'logged_at' => now(),
+                ]
+            );
+
+            AuditLog::record(
+                'payout.log',
+                "Teacher payout logged for {$teacher->name} ({$monthDate->format('M Y')})",
+                $expense,
+                [
+                    'teacher_id' => $teacherId,
+                    'classes' => $count,
+                    'amount' => $amount,
+                    'expense_id' => $expense->id,
+                    'payout_month' => $monthDate->toDateString(),
                 ]
             );
             $savedAny = true;

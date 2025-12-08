@@ -31,6 +31,8 @@ Route::middleware([
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');
     Route::view('/teachers', 'pages.teachers')->name('teachers.index');
+    Route::view('/class-sections', 'pages.class-sections')->middleware('role:admin')->name('class.sections');
+    Route::view('/audit-logs', 'pages.audit-logs')->middleware('role:admin,director')->name('audit.logs');
     Route::view('/leaderboard', 'pages.leaderboard')
         ->middleware('role:admin,director,instructor,assistant')
         ->name('leaderboard.index');

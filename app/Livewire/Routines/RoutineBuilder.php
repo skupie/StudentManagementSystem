@@ -4,6 +4,7 @@ namespace App\Livewire\Routines;
 
 use App\Models\Routine;
 use App\Models\Teacher;
+use App\Models\AuditLog;
 use App\Support\AcademyOptions;
 use Livewire\Component;
 
@@ -19,6 +20,7 @@ class RoutineBuilder extends Component
     ];
 
     public string $viewDate = '';
+    public ?int $editingId = null;
 
     protected function rules(): array
     {
@@ -34,31 +36,97 @@ class RoutineBuilder extends Component
 
     public function mount(): void
     {
-        $today = now()->toDateString();
+        $today = now('Asia/Dhaka')->toDateString();
         $this->form['routine_date'] = $today;
         $this->viewDate = $today;
+    }
+
+    public function edit(int $routineId): void
+    {
+        $routine = Routine::findOrFail($routineId);
+        $this->editingId = $routine->id;
+        $this->form = [
+            'class_level' => $routine->class_level,
+            'section' => $routine->section,
+            'routine_date' => $routine->routine_date,
+            'time_slot' => $routine->time_slot,
+            'subject' => $routine->subject,
+            'teacher_id' => $routine->teacher_id,
+        ];
+        $this->viewDate = $routine->routine_date;
+    }
+
+    public function cancelEdit(): void
+    {
+        $today = now('Asia/Dhaka')->toDateString();
+        $this->editingId = null;
+        $this->form['time_slot'] = '';
+        $this->form['subject'] = '';
+        $this->form['teacher_id'] = '';
+        $this->viewDate = $this->viewDate ?: $today;
     }
 
     public function save(): void
     {
         $data = $this->validate()['form'];
 
-        Routine::create([
-            'class_level' => $data['class_level'],
-            'section' => $data['section'],
-            'routine_date' => $data['routine_date'],
-            'time_slot' => $data['time_slot'],
-            'subject' => $data['subject'],
-            'teacher_id' => $data['teacher_id'] ?: null,
-            'created_by' => auth()->id(),
-        ]);
+        if ($this->editingId) {
+            $routine = Routine::findOrFail($this->editingId);
+            $routine->update([
+                'class_level' => $data['class_level'],
+                'section' => $data['section'],
+                'routine_date' => $data['routine_date'],
+                'time_slot' => $data['time_slot'],
+                'subject' => $data['subject'],
+                'teacher_id' => $data['teacher_id'] ?: null,
+            ]);
+
+            AuditLog::record(
+                'routine.update',
+                "Routine updated for {$routine->class_level}-{$routine->section} on {$routine->routine_date} at {$routine->time_slot}",
+                $routine,
+                [
+                    'class_level' => $routine->class_level,
+                    'section' => $routine->section,
+                    'routine_date' => $routine->routine_date,
+                    'time_slot' => $routine->time_slot,
+                    'subject' => $routine->subject,
+                    'teacher_id' => $routine->teacher_id,
+                ]
+            );
+        } else {
+            $routine = Routine::create([
+                'class_level' => $data['class_level'],
+                'section' => $data['section'],
+                'routine_date' => $data['routine_date'],
+                'time_slot' => $data['time_slot'],
+                'subject' => $data['subject'],
+                'teacher_id' => $data['teacher_id'] ?: null,
+                'created_by' => auth()->id(),
+            ]);
+
+            AuditLog::record(
+                'routine.create',
+                "Routine created for {$routine->class_level}-{$routine->section} on {$routine->routine_date} at {$routine->time_slot}",
+                $routine,
+                [
+                    'class_level' => $routine->class_level,
+                    'section' => $routine->section,
+                    'routine_date' => $routine->routine_date,
+                    'time_slot' => $routine->time_slot,
+                    'subject' => $routine->subject,
+                    'teacher_id' => $routine->teacher_id,
+                ]
+            );
+        }
 
         // Reset only the entry-specific fields, keep selected date/class/section.
         $this->form['time_slot'] = '';
         $this->form['subject'] = '';
         $this->form['teacher_id'] = '';
+        $this->editingId = null;
 
-        $this->dispatch('notify', message: 'Routine entry added.');
+        $this->dispatch('notify', message: 'Routine entry saved.');
     }
 
     public function render()

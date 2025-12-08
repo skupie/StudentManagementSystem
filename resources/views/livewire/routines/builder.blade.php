@@ -3,7 +3,7 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h2 class="text-xl font-semibold text-gray-800">Create Routine Entry</h2>
-                <p class="text-sm text-gray-500">Entries are saved against a specific date; tables below show the selected date.</p>
+                <p class="text-sm text-gray-500">Entries are saved against a specific date; tables below show the selected date (BST).</p>
             </div>
             <div class="flex flex-col md:flex-row gap-3 md:items-end">
                 <div>
@@ -32,12 +32,12 @@
                 <x-input-error :messages="$errors->get('form.section')" class="mt-1" />
             </div>
             <div>
-                <x-input-label value="Date" />
+                <x-input-label value="Date (BST)" />
                 <x-text-input type="date" wire:model.defer="form.routine_date" class="mt-1 block w-full" />
                 <x-input-error :messages="$errors->get('form.routine_date')" class="mt-1" />
             </div>
             <div>
-                <x-input-label value="Time" />
+                <x-input-label value="Time (BST)" />
                 <x-text-input type="text" wire:model.defer="form.time_slot" class="mt-1 block w-full" placeholder="e.g. 10:00 AM" />
                 <x-input-error :messages="$errors->get('form.time_slot')" class="mt-1" />
             </div>
@@ -64,8 +64,13 @@
                 <x-input-error :messages="$errors->get('form.teacher_id')" class="mt-1" />
             </div>
         </div>
-        <div class="text-right">
-            <x-primary-button type="button" wire:click="save">Add Entry</x-primary-button>
+        <div class="flex justify-end gap-3">
+            @if($editingId)
+                <x-secondary-button type="button" wire:click="cancelEdit">Cancel</x-secondary-button>
+            @endif
+            <x-primary-button type="button" wire:click="save">
+                {{ $editingId ? __('Update Entry') : __('Add Entry') }}
+            </x-primary-button>
         </div>
     </div>
 
@@ -75,7 +80,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800">{{ $table['class_label'] }} — {{ $table['section_label'] }}</h3>
-                        <p class="text-xs text-gray-500">Table: {{ strtoupper(str_replace('|', '_', $key)) }} • Date: {{ \Carbon\Carbon::parse($viewDate)->format('d M Y') }}</p>
+                        <p class="text-xs text-gray-500">Table: {{ strtoupper(str_replace('|', '_', $key)) }} • Date: {{ \Carbon\Carbon::parse($viewDate)->timezone('Asia/Dhaka')->format('d M Y') }}</p>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -93,10 +98,15 @@
                                     <td class="px-3 py-2">{{ $row->time_slot }}</td>
                                     <td class="px-3 py-2">{{ $row->subject }}</td>
                                     <td class="px-3 py-2">{{ $row->teacher?->name ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-right">
+                                        <x-secondary-button type="button" wire:click="edit({{ $row->id }})" class="text-xs">
+                                            {{ __('Edit') }}
+                                        </x-secondary-button>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-3 py-4 text-center text-gray-500">No entries yet.</td>
+                                    <td colspan="4" class="px-3 py-4 text-center text-gray-500">No entries yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>

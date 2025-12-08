@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="bg-white shadow rounded-lg p-6 space-y-1 text-center">
         <h1 class="text-2xl font-bold text-gray-800">Basic Academy</h1>
-        <p class="text-sm text-gray-600">Class Routine — {{ \Carbon\Carbon::parse($viewDate)->format('d M Y') }}</p>
+        <p class="text-sm text-gray-600">Class Routine — {{ \Carbon\Carbon::parse($viewDate)->timezone('Asia/Dhaka')->format('d M Y') }} (BST)</p>
     </div>
 
     <div class="grid lg:grid-cols-2 gap-6">

@@ -2,16 +2,47 @@
 
 namespace App\Support;
 
+use App\Models\ClassOption;
+use App\Models\SectionOption;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+
 class AcademyOptions
 {
     public static function classes(): array
     {
-        return config('academy.classes');
+        return Cache::remember('academy.classes', 300, function () {
+            if (Schema::hasTable('class_options')) {
+                $db = ClassOption::where('is_active', true)
+                    ->orderBy('label')
+                    ->get()
+                    ->pluck('label', 'key')
+                    ->toArray();
+                if (! empty($db)) {
+                    return $db;
+                }
+            }
+
+            return config('academy.classes');
+        });
     }
 
     public static function sections(): array
     {
-        return config('academy.sections');
+        return Cache::remember('academy.sections', 300, function () {
+            if (Schema::hasTable('section_options')) {
+                $db = SectionOption::where('is_active', true)
+                    ->orderBy('label')
+                    ->get()
+                    ->pluck('label', 'key')
+                    ->toArray();
+                if (! empty($db)) {
+                    return $db;
+                }
+            }
+
+            return config('academy.sections');
+        });
     }
 
     public static function absenceCategories(): array

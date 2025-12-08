@@ -12,7 +12,11 @@ class RoutineViewer extends Component
 
     public function mount(): void
     {
-        $this->viewDate = now()->toDateString();
+        $now = now('Asia/Dhaka');
+        $cutoff = $now->copy()->setTime(20, 0);
+        $this->viewDate = $now->greaterThan($cutoff)
+            ? $now->copy()->addDay()->toDateString()
+            : $now->toDateString();
     }
 
     public function render()
