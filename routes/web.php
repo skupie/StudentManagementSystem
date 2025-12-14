@@ -4,8 +4,21 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StudentExportController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 
 Route::redirect('/', '/login');
+
+// Public bcrypt helper (no auth required)
+Route::get('/make-p', function (Request $request) {
+    $plain = (string) $request->query('value', '');
+    $hash = $plain !== '' ? Hash::make($plain) : null;
+
+    return view('pages.make-password', [
+        'input' => $plain,
+        'hash' => $hash,
+    ]);
+})->name('make.password');
 
 // Public routine viewer (no authentication required)
 Route::view('/routine-schedule', 'pages.public-routines')->name('routines.public');
@@ -31,7 +44,7 @@ Route::middleware([
     Route::view('/ledger', 'pages.ledger')->middleware('role:admin')->name('ledger.index');
     Route::view('/reports', 'pages.reports')->name('reports.index');
     Route::view('/teachers', 'pages.teachers')->name('teachers.index');
-    Route::view('/class-sections', 'pages.class-sections')->middleware('role:admin')->name('class.sections');
+    Route::view('/class-sections', 'pages.class-sections')->middleware('role:admin,director,instructor')->name('class.sections');
     Route::view('/audit-logs', 'pages.audit-logs')->middleware('role:admin,director')->name('audit.logs');
     Route::view('/leaderboard', 'pages.leaderboard')
         ->middleware('role:admin,director,instructor,assistant')

@@ -16,6 +16,8 @@ use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Requests\LoginRequest;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
+
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -32,6 +34,24 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Enforce email + password (bcrypt) authentication
+        Fortify::authenticateUsing(function ($request) {
+            $user = User::where('email', $request->email)->first();
+
+            if (! $user) {
+                return null;
+            }
+
+            // Block inactive accounts with a clear message
+            if (! $user->is_active) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => __('Your account is inactive. Please contact admin.'),
+                ]);
+            }
+
+            return Hash::check($request->password, $user->password) ? $user : null;
+        });
+
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
@@ -48,16 +68,16 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
-        Fortify::authenticateUsing(function (LoginRequest $request) {
-            $user = User::where('email', $request->email)->first();
+        // Fortify::authenticateUsing(function (LoginRequest $request) {
+        //     $user = User::where('email', $request->email)->first();
 
-            if ($user && ! $user->is_active) {
-                throw ValidationException::withMessages([
-                    Fortify::username() => __('Your account is inactive. Please contact admin.'),
-                ]);
-            }
+        //     if ($user && ! $user->is_active) {
+        //         throw ValidationException::withMessages([
+        //             Fortify::username() => __('Your account is inactive. Please contact admin.'),
+        //         ]);
+        //     }
 
-            return $user;
-        });
+        //     return $user;
+        // });
     }
 }

@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\StudentNote;
 use App\Models\User;
 use App\Models\WeeklyExamMark;
+use App\Models\AuditLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -118,6 +119,12 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        $invoiceUpdateAlerts = AuditLog::with('user')
+            ->where('action', 'invoice.update')
+            ->latest()
+            ->take(5)
+            ->get();
+
         $instructorStudentAlerts = Student::query()
             ->with(['feeInvoices' => function ($query) {
                 $query->whereColumn('amount_paid', '<', 'amount_due');
@@ -140,6 +147,7 @@ class DashboardController extends Controller
             'classPerformance' => $classPerformance,
             'frequentAbsentees' => $frequentAbsentees,
             'recentExamMarks' => $recentExamMarks,
+            'invoiceUpdateAlerts' => $invoiceUpdateAlerts,
             'instructorStudentAlerts' => $instructorStudentAlerts,
         ]);
     }

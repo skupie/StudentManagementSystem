@@ -7,6 +7,7 @@ use App\Models\Teacher;
 use App\Models\TeacherPayment;
 use App\Models\AuditLog;
 use Livewire\Component;
+use Illuminate\Support\Facades\Schema;
 
 class TeacherPaymentCalculator extends Component
 {
@@ -27,10 +28,12 @@ class TeacherPaymentCalculator extends Component
         $monthDate = \Carbon\Carbon::parse($this->payoutMonth . '-01')->startOfMonth();
         $existing = TeacherPayment::whereDate('payout_month', $monthDate)->get()->keyBy('teacher_id');
 
-        $teachers = Teacher::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get()
+        $teacherQuery = Teacher::query()->orderBy('name');
+        if (Schema::hasColumn('teachers', 'is_active')) {
+            $teacherQuery->where('is_active', true);
+        }
+
+        $teachers = $teacherQuery->get()
             ->map(function (Teacher $teacher) use ($existing) {
                 $existingPayment = $existing[$teacher->id] ?? null;
                 $inputCount = $this->classCounts[$teacher->id] ?? $existingPayment?->class_count ?? 0;

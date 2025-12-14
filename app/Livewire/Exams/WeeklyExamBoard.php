@@ -45,7 +45,7 @@ class WeeklyExamBoard extends Component
                 Rule::in(array_keys(AcademyOptions::subjectsForSection($this->form['section'] ?? $this->sectionFilter))),
             ],
             'form.exam_date' => ['required', 'date'],
-            'form.marks_obtained' => ['required', 'integer', 'min:0'],
+            'form.marks_obtained' => ['required', 'numeric', 'min:0', 'lte:form.max_marks'],
             'form.max_marks' => ['required', 'integer', 'min:1'],
             'form.remarks' => ['nullable', 'string'],
         ];

@@ -4,6 +4,7 @@ namespace App\Livewire\Fees;
 
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
+use App\Models\AuditLog;
 use App\Models\Student;
 use App\Support\AcademyOptions;
 use Carbon\Carbon;
@@ -178,6 +179,7 @@ class FeeManager extends Component
 
         if ($this->editingInvoiceId) {
             $invoice = FeeInvoice::findOrFail($this->editingInvoiceId);
+            $previousAmount = (float) $invoice->amount_due;
             $invoice->update([
                 'student_id' => $data['student_id'],
                 'billing_month' => $month,
@@ -194,6 +196,19 @@ class FeeManager extends Component
                 ? 'paid'
                 : ($invoice->amount_paid > 0 ? 'partial' : 'pending');
             $invoice->save();
+
+            AuditLog::record(
+                'invoice.update',
+                'Invoice updated for ' . optional($invoice->student)->name . ' (' . $month->format('M Y') . ')',
+                $invoice,
+                [
+                    'student_id' => $invoice->student_id,
+                    'billing_month' => $month->toDateString(),
+                    'previous_amount_due' => $previousAmount,
+                    'amount_due' => $invoice->amount_due,
+                    'notes' => $invoice->notes,
+                ]
+            );
         } else {
             $invoice = FeeInvoice::updateOrCreate(
                 [
@@ -209,6 +224,18 @@ class FeeManager extends Component
                     'notes' => $data['notes'],
                     'amount_paid' => 0,
                     'status' => 'pending',
+                ]
+            );
+
+            AuditLog::record(
+                'invoice.create',
+                'Invoice created for ' . optional($invoice->student)->name . ' (' . $month->format('M Y') . ')',
+                $invoice,
+                [
+                    'student_id' => $invoice->student_id,
+                    'billing_month' => $month->toDateString(),
+                    'amount_due' => $invoice->amount_due,
+                    'notes' => $invoice->notes,
                 ]
             );
         }
@@ -312,9 +339,29 @@ class FeeManager extends Component
 
                 $this->refreshInvoicePaymentSummary($previousInvoice);
                 $this->refreshInvoicePaymentSummary($targetInvoice);
+                $this->syncDueInvoiceForPartial($previousInvoice);
+                $this->syncDueInvoiceForPartial($targetInvoice);
+
+                AuditLog::record(
+                    'payment.update',
+                    'Payment updated for ' . optional($targetInvoice->student)->name . ' (' . $targetInvoice->billing_month?->format('M Y') . ')',
+                    $payment,
+                    [
+                        'payment_id' => $payment->id,
+                        'invoice_id' => $targetInvoice->id,
+                        'student_id' => $targetInvoice->student_id,
+                        'amount' => $paymentAmount,
+                        'previous_amount' => $previousAmount,
+                        'scholarship' => $scholarship,
+                        'previous_scholarship' => $previousScholarship,
+                        'payment_date' => $this->paymentForm['payment_date'],
+                        'payment_mode' => $this->paymentForm['payment_mode'],
+                        'receipt_number' => $this->paymentForm['receipt_number'],
+                    ]
+                );
             } else {
                 if ($shouldRecordPayment) {
-                    FeePayment::create([
+                    $payment = FeePayment::create([
                         'fee_invoice_id' => $targetInvoice->id,
                         'student_id' => $targetInvoice->student_id,
                         'amount' => $paymentAmount,
@@ -326,9 +373,26 @@ class FeeManager extends Component
                         'receipt_number' => $this->paymentForm['receipt_number'],
                         'recorded_by' => auth()->id(),
                     ]);
+
+                    AuditLog::record(
+                        'payment.create',
+                        'Payment recorded for ' . optional($targetInvoice->student)->name . ' (' . $targetInvoice->billing_month?->format('M Y') . ')',
+                        $payment,
+                        [
+                            'payment_id' => $payment->id,
+                            'invoice_id' => $targetInvoice->id,
+                            'student_id' => $targetInvoice->student_id,
+                            'amount' => $paymentAmount,
+                            'scholarship' => $scholarship,
+                            'payment_date' => $this->paymentForm['payment_date'],
+                            'payment_mode' => $this->paymentForm['payment_mode'],
+                            'receipt_number' => $this->paymentForm['receipt_number'],
+                        ]
+                    );
                 }
 
                 $this->refreshInvoicePaymentSummary($targetInvoice);
+                $this->syncDueInvoiceForPartial($targetInvoice);
             }
         });
 
@@ -431,5 +495,92 @@ class FeeManager extends Component
             ? 'paid'
             : ($paidAmount > 0 ? 'partial' : 'pending');
         $invoice->save();
+    }
+
+    protected function syncDueInvoiceForPartial(FeeInvoice $invoice): void
+    {
+        if (! $invoice->exists || str_starts_with((string) ($invoice->notes ?? ''), '[Auto Due]')) {
+            return;
+        }
+
+        $invoice->refresh();
+
+        $netAmount = round((float) $invoice->amount_due, 2);
+        $paidAmount = round((float) $invoice->amount_paid, 2);
+        $outstanding = round(max(0, $netAmount - $paidAmount), 2);
+
+        $monthStart = Carbon::parse($invoice->billing_month)->startOfMonth();
+        $carryMonth = $monthStart->copy()->endOfMonth();
+
+        $dueInvoice = FeeInvoice::lockForUpdate()
+            ->where('student_id', $invoice->student_id)
+            ->whereDate('billing_month', $carryMonth)
+            ->where('id', '!=', $invoice->id)
+            ->first();
+
+        if ($outstanding < 0.01 || $paidAmount <= 0) {
+            if ($dueInvoice && str_starts_with((string) ($dueInvoice->notes ?? ''), '[Auto Due]')) {
+                if ($dueInvoice->payments()->exists()) {
+                    $this->refreshInvoicePaymentSummary($dueInvoice);
+
+                    $dueInvoice->amount_due = $dueInvoice->amount_paid;
+                    $dueInvoice->status = $dueInvoice->amount_paid > 0 ? 'paid' : 'pending';
+                    $dueInvoice->save();
+                } else {
+                    $dueInvoice->delete();
+                }
+            }
+
+            return;
+        }
+
+        $invoice->amount_due = $paidAmount;
+        $invoice->status = 'paid';
+        $invoice->save();
+
+        $note = $this->autoDueNote($monthStart);
+
+        if ($dueInvoice) {
+            $dueInvoice->update([
+                'billing_month' => $carryMonth,
+                'due_date' => $invoice->due_date ?? $carryMonth,
+                'amount_due' => $outstanding,
+                'scholarship_amount' => 0,
+                'was_active' => $invoice->was_active,
+                'manual_override' => true,
+                'notes' => $note,
+            ]);
+
+            $this->refreshInvoicePaymentSummary($dueInvoice);
+        } else {
+            $dueInvoice = FeeInvoice::create([
+                'student_id' => $invoice->student_id,
+                'billing_month' => $carryMonth,
+                'due_date' => $invoice->due_date ?? $carryMonth,
+                'amount_due' => $outstanding,
+                'scholarship_amount' => 0,
+                'amount_paid' => 0,
+                'status' => 'pending',
+                'was_active' => $invoice->was_active,
+                'manual_override' => true,
+                'notes' => $note,
+            ]);
+
+            AuditLog::record(
+                'invoice.create',
+                'Auto due invoice created for ' . optional($invoice->student)->name . ' (' . $monthStart->format('M Y') . ')',
+                $dueInvoice,
+                [
+                    'student_id' => $dueInvoice->student_id,
+                    'billing_month' => $dueInvoice->billing_month->toDateString(),
+                    'amount_due' => $dueInvoice->amount_due,
+                ]
+            );
+        }
+    }
+
+    protected function autoDueNote(Carbon $month): string
+    {
+        return '[Auto Due] Remaining from ' . $month->format('M Y');
     }
 }

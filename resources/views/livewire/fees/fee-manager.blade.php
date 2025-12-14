@@ -27,7 +27,11 @@
                 <select wire:model.defer="invoiceForm.student_id" class="mt-1 block w-full rounded-md border-gray-300">
                     <option value="">Select student</option>
                     @foreach ($students as $student)
-                        <option value="{{ $student->id }}">{{ $student->name }} ({{ $student->phone_number }})</option>
+                        <option value="{{ $student->id }}">
+                            {{ $student->name }} ({{ $student->phone_number }})
+                            — {{ \App\Support\AcademyOptions::classLabel($student->class_level ?? '') }},
+                            {{ \App\Support\AcademyOptions::sectionLabel($student->section ?? '') }}
+                        </option>
                     @endforeach
                 </select>
                 <x-input-error :messages="$errors->get('invoiceForm.student_id')" class="mt-1" />

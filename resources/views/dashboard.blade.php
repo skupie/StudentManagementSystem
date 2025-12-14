@@ -160,6 +160,30 @@
                     </div>
                 </div>
 
+                {{-- Invoice Update Alerts --}}
+                <div class="bg-white rounded-lg shadow p-4 space-y-3">
+                    <h3 class="font-semibold text-gray-800">Invoice Update Alerts</h3>
+                    <p class="text-xs text-gray-500">Recent edits to fee invoices</p>
+                    <ul class="divide-y divide-gray-100">
+                        @forelse ($invoiceUpdateAlerts as $alert)
+                            <li class="py-2 flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm text-red-600 font-semibold">{{ $alert->description ?? 'Invoice updated' }}</p>
+                                    <p class="text-xs text-gray-500">
+                                        By: {{ $alert->user->name ?? 'System' }} • {{ optional($alert->created_at)->diffForHumans() }}
+                                    </p>
+                                </div>
+                                @if (!empty($alert->model_id))
+                                    <span class="inline-flex px-2 py-1 rounded-full text-[11px] bg-indigo-100 text-indigo-700">Invoice #{{ $alert->model_id }}</span>
+                                @endif
+                            </li>
+                        @empty
+                            <li class="py-2 text-sm text-gray-500">No recent invoice edits.</li>
+                        @endforelse
+                    </ul>
+                    <div class="text-xs text-gray-500">Full history available in Audit Log.</div>
+                </div>
+
                 {{-- Notifications --}}
                 <div class="bg-white rounded-lg shadow p-4 space-y-3">
                     <h3 class="font-semibold text-gray-800">Notifications</h3>

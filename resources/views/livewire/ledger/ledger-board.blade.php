@@ -105,6 +105,9 @@
                     <li class="py-3 text-gray-500 text-sm text-center">No payments in range.</li>
                 @endforelse
             </ul>
+            <div>
+                {{ $payments->links() }}
+            </div>
         </div>
     </div>
 
@@ -132,7 +135,7 @@
                                 <x-secondary-button type="button" wire:click="editExpense({{ $expense->id }})" class="text-xs">
                                     Edit
                                 </x-secondary-button>
-                                <x-danger-button type="button" wire:click="deleteExpense({{ $expense->id }})" class="text-xs">
+                                <x-danger-button type="button" wire:click="promptDelete({{ $expense->id }})" class="text-xs">
                                     Delete
                                 </x-danger-button>
                             </td>
@@ -148,4 +151,22 @@
             </table>
         </div>
     </div>
+
+    @if ($confirmingDeleteId)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Deletion</h3>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" wire:click="cancelDelete">&times;</button>
+                </div>
+                <p class="text-sm text-gray-700">
+                    Are you sure you want to delete this expense? This action cannot be undone.
+                </p>
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="cancelDelete">Cancel</x-secondary-button>
+                    <x-danger-button type="button" wire:click="deleteExpense">Delete</x-danger-button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

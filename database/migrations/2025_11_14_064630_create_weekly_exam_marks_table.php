@@ -17,7 +17,7 @@ return new class extends Migration
             $table->enum('class_level', ['hsc_1', 'hsc_2']);
             $table->enum('section', ['science', 'humanities', 'business_studies']);
             $table->date('exam_date');
-            $table->integer('marks_obtained');
+            $table->decimal('marks_obtained', 8, 2);
             $table->integer('max_marks')->default(100);
             $table->foreignId('recorded_by')->constrained('users')->cascadeOnDelete();
             $table->text('remarks')->nullable();

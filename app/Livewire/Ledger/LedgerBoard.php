@@ -3,12 +3,19 @@
 namespace App\Livewire\Ledger;
 
 use App\Models\Expense;
+use App\Models\AuditLog;
 use App\Models\FeePayment;
 use App\Models\Setting;
+use Carbon\Carbon;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class LedgerBoard extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'tailwind';
+
     public string $rangeStart;
     public string $rangeEnd;
 
@@ -22,6 +29,7 @@ class LedgerBoard extends Component
     public ?int $editingExpenseId = null;
     public string $initialDepositInput = '';
     public float $initialDeposit = 0;
+    public ?int $confirmingDeleteId = null;
 
     protected function rules(): array
     {
@@ -55,13 +63,13 @@ class LedgerBoard extends Component
         $incomeTotal = (clone $incomeQuery)->sum('amount');
         $expenseTotal = (clone $expenseQuery)->sum('amount');
 
-        $rangeStartDate = \Carbon\Carbon::parse($this->rangeStart);
+        $rangeStartDate = Carbon::parse($this->rangeStart);
         $prevStart = $rangeStartDate->copy()->subMonth()->startOfMonth();
         $prevEnd = $rangeStartDate->copy()->subMonth()->endOfMonth();
         $carryForward = FeePayment::whereBetween('payment_date', [$prevStart, $prevEnd])->sum('amount')
             - Expense::whereBetween('expense_date', [$prevStart, $prevEnd])->sum('amount');
 
-        $payments = $incomeQuery->take(15)->get();
+        $payments = $incomeQuery->paginate(15);
         $expenses = $expenseQuery->take(15)->get();
 
         return view('livewire.ledger.ledger-board', [
@@ -81,9 +89,22 @@ class LedgerBoard extends Component
         $data = $this->validate()['expenseForm'];
         $data['recorded_by'] = auth()->id();
 
-        Expense::updateOrCreate(
+        $expense = Expense::updateOrCreate(
             ['id' => $this->editingExpenseId],
             $data
+        );
+
+        AuditLog::record(
+            $this->editingExpenseId ? 'expense.update' : 'expense.create',
+            ($this->editingExpenseId ? 'Updated' : 'Added') . ' expense: ' . $data['category'] . ' ৳' . $data['amount'],
+            $expense,
+            [
+                'expense_id' => $expense->id,
+                'date' => $data['expense_date'],
+                'category' => $data['category'],
+                'amount' => $data['amount'],
+                'description' => $data['description'],
+            ]
         );
 
         $this->resetExpenseForm();
@@ -101,9 +122,43 @@ class LedgerBoard extends Component
         ];
     }
 
-    public function deleteExpense(int $expenseId): void
+    public function promptDelete(int $expenseId): void
     {
-        Expense::where('id', $expenseId)->delete();
+        $this->confirmingDeleteId = $expenseId;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
+    public function deleteExpense(int $expenseId = null): void
+    {
+        $id = $expenseId ?? $this->confirmingDeleteId;
+        if (! $id) {
+            return;
+        }
+
+        $expense = Expense::find($id);
+        if (! $expense) {
+            return;
+        }
+
+        AuditLog::record(
+            'expense.delete',
+            'Deleted expense: ' . $expense->category . ' ৳' . $expense->amount,
+            $expense,
+            [
+                'expense_id' => $expense->id,
+                'date' => optional($expense->expense_date)->toDateString(),
+                'category' => $expense->category,
+                'amount' => $expense->amount,
+                'description' => $expense->description,
+            ]
+        );
+
+        $expense->delete();
+        $this->confirmingDeleteId = null;
     }
 
     public function resetExpenseForm(): void
@@ -126,6 +181,23 @@ class LedgerBoard extends Component
         Setting::setValue('ledger_initial_deposit', $this->initialDepositInput);
         $this->initialDeposit = (float) $this->initialDepositInput;
         $this->dispatch('notify', message: 'Initial deposit saved.');
+
+        AuditLog::record(
+            'ledger.initial_deposit.update',
+            'Initial deposit set to ৳' . $this->initialDepositInput,
+            null,
+            ['amount' => $this->initialDepositInput]
+        );
+    }
+
+    public function updatedRangeStart(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedRangeEnd(): void
+    {
+        $this->resetPage();
     }
 
     protected function loadInitialDeposit(): void

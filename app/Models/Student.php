@@ -71,10 +71,11 @@ class Student extends Model
     public function dueSummary(?Carbon $asOf = null): array
     {
         $asOf = ($asOf ?? now())->copy()->startOfMonth();
+        $monthCutoff = $asOf->copy()->endOfMonth();
 
         if (! $this->enrollment_date || ! $this->monthly_fee) {
             $openInvoices = $this->feeInvoices()
-                ->where('billing_month', '<=', $asOf)
+                ->where('billing_month', '<=', $monthCutoff)
                 ->orderBy('billing_month')
                 ->get();
 
@@ -98,7 +99,7 @@ class Student extends Model
         $this->ensureInvoicesThroughMonth($asOf);
 
         $openInvoices = $this->feeInvoices()
-            ->where('billing_month', '<=', $asOf)
+            ->where('billing_month', '<=', $monthCutoff)
             ->orderBy('billing_month')
             ->get();
 
@@ -150,6 +151,10 @@ class Student extends Model
 
     public function adjustInvoiceForAttendance(FeeInvoice $invoice): void
     {
+        if ($invoice->manual_override) {
+            return;
+        }
+
         $month = Carbon::parse($invoice->billing_month)->startOfMonth();
         $desiredAmount = $this->calculateDueAmountForMonth($month, (bool) $invoice->was_active);
 

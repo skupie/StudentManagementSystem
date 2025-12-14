@@ -8,21 +8,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('class_options', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique();
-            $table->string('label');
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('class_options')) {
+            Schema::create('class_options', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->string('label');
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('section_options', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique();
-            $table->string('label');
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('section_options')) {
+            Schema::create('section_options', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->string('label');
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
