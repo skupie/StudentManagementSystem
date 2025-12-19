@@ -2,17 +2,21 @@
 
 namespace App\Livewire\Students;
 
+use App\Models\Attendance;
 use App\Models\FeeInvoice;
 use App\Models\Student;
 use App\Support\AcademyOptions;
 use Carbon\Carbon;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Storage;
 
 class StudentManager extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     #[Validate('nullable|string|max:255')]
     public string $search = '';
@@ -40,6 +44,8 @@ class StudentManager extends Component
         'passed_year' => null,
         'notes' => '',
     ];
+
+    public $importFile;
 
     public ?int $editingId = null;
     public ?int $attendanceStudentId = null;
@@ -167,6 +173,195 @@ class StudentManager extends Component
 
         $this->resetForm();
     }
+
+    public function exportCsv()
+    {
+        $filename = 'students-' . now()->format('Ymd-His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, [
+                'name',
+                'gender',
+                'phone_number',
+                'class_level',
+                'academic_year',
+                'section',
+                'monthly_fee',
+                'full_payment_override',
+                'enrollment_date',
+                'status',
+                'is_passed',
+                'passed_year',
+                'notes',
+                'attendance_logs',
+            ]);
+
+            Student::orderBy('name')->chunk(200, function ($chunk) use ($handle) {
+                foreach ($chunk as $student) {
+                    $logs = $student->attendances()
+                        ->orderBy('attendance_date')
+                        ->get()
+                        ->map(function ($row) {
+                            $parts = [
+                                optional($row->attendance_date)->toDateString(),
+                                $row->status,
+                                $row->category ?? '',
+                                str_replace(["\r", "\n", '|'], ' ', $row->note ?? ''),
+                            ];
+                            return implode('|', $parts);
+                        })
+                        ->implode(';');
+
+                    fputcsv($handle, [
+                        $student->name,
+                        $student->gender,
+                        $student->phone_number,
+                        $student->class_level,
+                        $student->academic_year,
+                        $student->section,
+                        $student->monthly_fee,
+                        $student->full_payment_override ? '1' : '0',
+                        optional($student->enrollment_date)->toDateString(),
+                        $student->status,
+                        $student->is_passed ? '1' : '0',
+                        $student->passed_year,
+                        str_replace(["\r", "\n"], ' ', $student->notes ?? ''),
+                        $logs,
+                    ]);
+                }
+            });
+
+            fclose($handle);
+        };
+
+        return response()->streamDownload($callback, $filename, $headers);
+    }
+
+    public function importCsv(): void
+    {
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        $tempStored = $this->importFile->store('imports');
+        $handle = $tempStored ? Storage::readStream($tempStored) : false;
+        if (! $handle) {
+            $this->addError('importFile', 'Unable to open uploaded file.');
+            if ($tempStored) {
+                Storage::delete($tempStored);
+            }
+            return;
+        }
+
+        $header = fgetcsv($handle);
+        if ($header && isset($header[0])) {
+            $header[0] = ltrim($header[0], "\xEF\xBB\xBF");
+        }
+        $header = $header ? array_map('strtolower', $header) : [];
+        $expected = [
+            'name',
+            'gender',
+            'phone_number',
+            'class_level',
+            'academic_year',
+            'section',
+            'monthly_fee',
+            'full_payment_override',
+            'enrollment_date',
+            'status',
+            'is_passed',
+            'passed_year',
+            'notes',
+            'attendance_logs',
+        ];
+        $hasHeader = count(array_intersect($header, $expected)) >= 3;
+
+        $imported = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            $record = [];
+            if ($hasHeader) {
+                foreach ($header as $index => $key) {
+                    if (isset($row[$index])) {
+                        $record[$key] = $row[$index];
+                    }
+                }
+            } else {
+                $record = array_combine($expected, array_pad($row, count($expected), null));
+            }
+
+            $name = trim($record['name'] ?? '');
+            $phone = trim($record['phone_number'] ?? '');
+            if ($name === '' && $phone === '') {
+                continue;
+            }
+
+            $student = Student::updateOrCreate(
+                $phone !== '' ? ['phone_number' => $phone] : ['name' => $name],
+                [
+                    'name' => $name ?: 'Unknown',
+                    'gender' => trim($record['gender'] ?? ''),
+                    'phone_number' => $phone ?: null,
+                    'class_level' => $record['class_level'] ?? 'hsc_1',
+                    'academic_year' => $record['academic_year'] ?? '',
+                    'section' => $record['section'] ?? 'science',
+                    'monthly_fee' => is_numeric($record['monthly_fee'] ?? null) ? (float) $record['monthly_fee'] : 0,
+                    'full_payment_override' => in_array(strtolower(trim($record['full_payment_override'] ?? '0')), ['1', 'true', 'yes'], true),
+                    'enrollment_date' => ($record['enrollment_date'] ?? null) ?: now()->toDateString(),
+                    'status' => in_array(strtolower(trim($record['status'] ?? 'active')), ['inactive']) ? 'inactive' : 'active',
+                    'is_passed' => in_array(strtolower(trim($record['is_passed'] ?? '0')), ['1', 'true', 'yes'], true),
+                    'passed_year' => $record['passed_year'] ?? null,
+                    'notes' => $record['notes'] ?? null,
+                ]
+            );
+
+            $logsString = trim($record['attendance_logs'] ?? '');
+            if ($logsString !== '') {
+                $entries = array_filter(array_map('trim', explode(';', $logsString)));
+                foreach ($entries as $entry) {
+                    [$date, $status, $category, $note] = array_pad(explode('|', $entry, 4), 4, '');
+                    $date = $date ?: null;
+                    if (! $date) {
+                        continue;
+                    }
+                    Attendance::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'attendance_date' => Carbon::parse($date)->toDateString(),
+                        ],
+                        [
+                            'status' => strtolower(trim($status ?: 'present')),
+                            'category' => $category ?: null,
+                            'note' => $note ?: null,
+                            'recorded_by' => auth()->id(),
+                        ]
+                    );
+                }
+            }
+
+            $student->ensureInvoicesThroughMonth();
+            $imported++;
+        }
+
+        fclose($handle);
+        if ($tempStored) {
+            Storage::delete($tempStored);
+        }
+
+        $this->importFile = null;
+        $this->resetPage();
+        if ($imported === 0) {
+            $this->addError('importFile', 'No rows were imported. Please check the file headers and data.');
+        } else {
+            $this->dispatch('notify', message: "Import complete. {$imported} student(s) processed.");
+        }
+    }
+
 
     public function edit(int $studentId): void
     {

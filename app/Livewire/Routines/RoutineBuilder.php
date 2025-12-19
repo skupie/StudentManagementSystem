@@ -4,7 +4,6 @@ namespace App\Livewire\Routines;
 
 use App\Models\Routine;
 use App\Models\Teacher;
-use App\Models\AuditLog;
 use App\Support\AcademyOptions;
 use Livewire\Component;
 
@@ -81,19 +80,6 @@ class RoutineBuilder extends Component
                 'teacher_id' => $data['teacher_id'] ?: null,
             ]);
 
-            AuditLog::record(
-                'routine.update',
-                "Routine updated for {$routine->class_level}-{$routine->section} on {$routine->routine_date} at {$routine->time_slot}",
-                $routine,
-                [
-                    'class_level' => $routine->class_level,
-                    'section' => $routine->section,
-                    'routine_date' => $routine->routine_date,
-                    'time_slot' => $routine->time_slot,
-                    'subject' => $routine->subject,
-                    'teacher_id' => $routine->teacher_id,
-                ]
-            );
         } else {
             $routine = Routine::create([
                 'class_level' => $data['class_level'],
@@ -104,20 +90,6 @@ class RoutineBuilder extends Component
                 'teacher_id' => $data['teacher_id'] ?: null,
                 'created_by' => auth()->id(),
             ]);
-
-            AuditLog::record(
-                'routine.create',
-                "Routine created for {$routine->class_level}-{$routine->section} on {$routine->routine_date} at {$routine->time_slot}",
-                $routine,
-                [
-                    'class_level' => $routine->class_level,
-                    'section' => $routine->section,
-                    'routine_date' => $routine->routine_date,
-                    'time_slot' => $routine->time_slot,
-                    'subject' => $routine->subject,
-                    'teacher_id' => $routine->teacher_id,
-                ]
-            );
         }
 
         // Reset only the entry-specific fields, keep selected date/class/section.

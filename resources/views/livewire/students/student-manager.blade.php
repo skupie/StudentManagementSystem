@@ -34,10 +34,37 @@
         <x-secondary-button wire:click="resetForm">
             {{ __('Reset Form') }}
         </x-secondary-button>
+        <x-secondary-button type="button" wire:click="exportCsv">
+            {{ __('Export CSV') }}
+        </x-secondary-button>
         <x-secondary-button type="button" onclick="window.location='{{ route('students.export.excel') }}'">
             {{ __('Download Excel') }}
         </x-secondary-button>
     </div>
+
+    <form wire:submit.prevent="importCsv" class="bg-white shadow rounded-lg p-4 space-y-3">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h4 class="font-semibold text-gray-800">CSV Import / Export</h4>
+                <p class="text-sm text-gray-500">Import or export students with attendance logs (semicolon-separated) in one file.</p>
+            </div>
+            <div class="flex flex-col md:flex-row gap-3 md:items-end w-full md:w-auto">
+                <div>
+                    <x-input-label value="Import CSV" />
+                    <input type="file" wire:model="importFile" accept=".csv,text/csv" class="mt-1 block w-full text-sm">
+                    <x-input-error :messages="$errors->get('importFile')" class="mt-1" />
+                </div>
+                <div class="flex gap-2">
+                    <x-secondary-button type="button" wire:click="exportCsv">
+                        Export CSV
+                    </x-secondary-button>
+                    <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="importFile,importCsv">
+                        Import CSV
+                    </x-primary-button>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <div class="grid md:grid-cols-3 gap-4">
         <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">

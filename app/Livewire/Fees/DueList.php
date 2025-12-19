@@ -6,11 +6,14 @@ use App\Models\FeeInvoice;
 use App\Models\FeePayment;
 use App\Models\Student;
 use App\Support\AcademyOptions;
+use App\Support\HandlesAutoDueInvoices;
 use Carbon\Carbon;
 use Livewire\Component;
 
 class DueList extends Component
 {
+    use HandlesAutoDueInvoices;
+
     public bool $embedded = false;
 
     public string $classFilter = 'all';
@@ -103,10 +106,11 @@ class DueList extends Component
                 'recorded_by' => auth()->id(),
             ]);
 
-            $invoice->amount_paid += $applyAmount;
-            $invoice->status = $invoice->amount_paid >= $invoice->amount_due ? 'paid' : 'partial';
             $invoice->payment_mode_last = $this->paymentMode;
             $invoice->save();
+
+            $this->refreshInvoicePaymentSummary($invoice);
+            $this->syncDueInvoiceForPartial($invoice);
 
             $remaining -= $applyAmount;
         }

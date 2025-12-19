@@ -48,7 +48,7 @@
                             />
                         </td>
                         <td class="px-4 py-2 text-right font-semibold">
-                            ৳ {{ number_format($teacher->total_with_existing ?? $teacher->calculated_total, 2) }}
+                            ৳ {{ number_format($teacher->calculated_total, 2) }}
                         </td>
                     </tr>
                 @empty
@@ -143,3 +143,4 @@
         </div>
     @endif
 </div>
+

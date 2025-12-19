@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Expense;
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
+use App\Models\ManualIncome;
 use App\Models\Holiday;
 use App\Models\Student;
 use App\Models\WeeklyExamMark;
@@ -210,16 +211,27 @@ class ReportController extends Controller
             ->orderBy('payment_date')
             ->get();
 
+        $manualIncomes = ManualIncome::query()
+            ->whereBetween('income_date', [$start, $end])
+            ->orderBy('income_date')
+            ->get();
+
         $expenses = Expense::whereBetween('expense_date', [$start, $end])
             ->orderBy('expense_date')
             ->get();
 
+        $manualIncomeTotal = $manualIncomes->sum('amount');
+        $paymentTotal = $payments->sum('amount');
+        $incomeTotal = $paymentTotal + $manualIncomeTotal;
         $pdf = Pdf::loadView('reports.pdf.finance', [
             'payments' => $payments,
+            'manualIncomes' => $manualIncomes,
             'expenses' => $expenses,
             'start' => $start,
             'end' => $end,
-            'incomeTotal' => $payments->sum('amount'),
+            'paymentTotal' => $paymentTotal,
+            'manualIncomeTotal' => $manualIncomeTotal,
+            'incomeTotal' => $incomeTotal,
             'expenseTotal' => $expenses->sum('amount'),
         ])->setPaper('a4', 'portrait');
 
@@ -237,6 +249,11 @@ class ReportController extends Controller
         $payments = FeePayment::with('student')
             ->whereBetween('payment_date', [$start, $end])
             ->orderBy('payment_date')
+            ->get();
+
+        $manualIncomes = ManualIncome::query()
+            ->whereBetween('income_date', [$start, $end])
+            ->orderBy('income_date')
             ->get();
 
         $expenses = Expense::whereBetween('expense_date', [$start, $end])
@@ -257,6 +274,17 @@ class ReportController extends Controller
                 $payment->student->name . ' (' . AcademyOptions::classLabel($payment->student->class_level ?? '') . ', ' . AcademyOptions::sectionLabel($payment->student->section ?? '') . ') - ' . ($payment->payment_mode ?? 'N/A'),
                 (float) $payment->amount,
                 $payment->receipt_number ?? 'N/A',
+            ], null, 'A' . $row);
+            $row++;
+        }
+
+        foreach ($manualIncomes as $income) {
+            $sheet->fromArray([
+                'Income',
+                optional($income->income_date)->format('d M Y'),
+                $income->category . ($income->description ? ' - ' . $income->description : ''),
+                (float) $income->amount,
+                '',
             ], null, 'A' . $row);
             $row++;
         }

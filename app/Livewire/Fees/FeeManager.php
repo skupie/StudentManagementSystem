@@ -7,6 +7,7 @@ use App\Models\FeePayment;
 use App\Models\AuditLog;
 use App\Models\Student;
 use App\Support\AcademyOptions;
+use App\Support\HandlesAutoDueInvoices;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class FeeManager extends Component
 {
     use WithPagination;
+    use HandlesAutoDueInvoices;
 
     public string $filterClass = 'all';
     public string $filterSection = 'all';
@@ -482,105 +484,5 @@ class FeeManager extends Component
             'receipt_number' => '',
             'scholarship_amount' => '',
         ];
-    }
-
-    protected function refreshInvoicePaymentSummary(FeeInvoice $invoice): void
-    {
-        $paidAmount = (float) $invoice->payments()->sum('amount');
-        $lastPayment = $invoice->payments()->latest('payment_date')->latest('id')->first();
-
-        $invoice->amount_paid = $paidAmount;
-        $invoice->payment_mode_last = $lastPayment?->payment_mode;
-        $invoice->status = $paidAmount >= $invoice->amount_due
-            ? 'paid'
-            : ($paidAmount > 0 ? 'partial' : 'pending');
-        $invoice->save();
-    }
-
-    protected function syncDueInvoiceForPartial(FeeInvoice $invoice): void
-    {
-        if (! $invoice->exists || str_starts_with((string) ($invoice->notes ?? ''), '[Auto Due]')) {
-            return;
-        }
-
-        $invoice->refresh();
-
-        $netAmount = round((float) $invoice->amount_due, 2);
-        $paidAmount = round((float) $invoice->amount_paid, 2);
-        $outstanding = round(max(0, $netAmount - $paidAmount), 2);
-
-        $monthStart = Carbon::parse($invoice->billing_month)->startOfMonth();
-        $carryMonth = $monthStart->copy()->endOfMonth();
-
-        $dueInvoice = FeeInvoice::lockForUpdate()
-            ->where('student_id', $invoice->student_id)
-            ->whereDate('billing_month', $carryMonth)
-            ->where('id', '!=', $invoice->id)
-            ->first();
-
-        if ($outstanding < 0.01 || $paidAmount <= 0) {
-            if ($dueInvoice && str_starts_with((string) ($dueInvoice->notes ?? ''), '[Auto Due]')) {
-                if ($dueInvoice->payments()->exists()) {
-                    $this->refreshInvoicePaymentSummary($dueInvoice);
-
-                    $dueInvoice->amount_due = $dueInvoice->amount_paid;
-                    $dueInvoice->status = $dueInvoice->amount_paid > 0 ? 'paid' : 'pending';
-                    $dueInvoice->save();
-                } else {
-                    $dueInvoice->delete();
-                }
-            }
-
-            return;
-        }
-
-        $invoice->amount_due = $paidAmount;
-        $invoice->status = 'paid';
-        $invoice->save();
-
-        $note = $this->autoDueNote($monthStart);
-
-        if ($dueInvoice) {
-            $dueInvoice->update([
-                'billing_month' => $carryMonth,
-                'due_date' => $invoice->due_date ?? $carryMonth,
-                'amount_due' => $outstanding,
-                'scholarship_amount' => 0,
-                'was_active' => $invoice->was_active,
-                'manual_override' => true,
-                'notes' => $note,
-            ]);
-
-            $this->refreshInvoicePaymentSummary($dueInvoice);
-        } else {
-            $dueInvoice = FeeInvoice::create([
-                'student_id' => $invoice->student_id,
-                'billing_month' => $carryMonth,
-                'due_date' => $invoice->due_date ?? $carryMonth,
-                'amount_due' => $outstanding,
-                'scholarship_amount' => 0,
-                'amount_paid' => 0,
-                'status' => 'pending',
-                'was_active' => $invoice->was_active,
-                'manual_override' => true,
-                'notes' => $note,
-            ]);
-
-            AuditLog::record(
-                'invoice.create',
-                'Auto due invoice created for ' . optional($invoice->student)->name . ' (' . $monthStart->format('M Y') . ')',
-                $dueInvoice,
-                [
-                    'student_id' => $dueInvoice->student_id,
-                    'billing_month' => $dueInvoice->billing_month->toDateString(),
-                    'amount_due' => $dueInvoice->amount_due,
-                ]
-            );
-        }
-    }
-
-    protected function autoDueNote(Carbon $month): string
-    {
-        return '[Auto Due] Remaining from ' . $month->format('M Y');
     }
 }

@@ -4,16 +4,20 @@ namespace App\Livewire\Teachers;
 
 use App\Models\Teacher;
 use App\Support\AcademyOptions;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class TeacherDirectory extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public string $search = '';
     public string $statusFilter = 'all';
     public ?int $editingId = null;
+    public $importFile;
     public array $form = [
         'name' => '',
         'subject' => '',
@@ -121,6 +125,132 @@ class TeacherDirectory extends Component
             'note' => '',
             'available_days' => [],
         ];
+    }
+
+    public function exportCsv()
+    {
+        $this->authorizeManage();
+
+        $filename = 'teachers-' . now()->format('Ymd-His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
+            fputcsv($handle, ['name', 'subjects', 'payment', 'contact_number', 'is_active', 'note', 'available_days']);
+
+            Teacher::orderBy('name')->chunk(200, function ($chunk) use ($handle) {
+                foreach ($chunk as $teacher) {
+                    fputcsv($handle, [
+                        $teacher->name,
+                        implode(',', (array) ($teacher->subjects ?? ($teacher->subject ? [$teacher->subject] : []))),
+                        $teacher->payment ?? '',
+                        $teacher->contact_number ?? '',
+                        $teacher->is_active ? '1' : '0',
+                        $teacher->note ?? '',
+                        implode(',', (array) ($teacher->available_days ?? [])),
+                    ]);
+                }
+            });
+
+            fclose($handle);
+        };
+
+        return response()->streamDownload($callback, $filename, $headers);
+    }
+
+    public function importCsv(): void
+    {
+        $this->authorizeManage();
+
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        // Store a copy to ensure readability across environments (esp. Windows).
+        $tempStored = $this->importFile->store('imports');
+        $handle = $tempStored ? Storage::readStream($tempStored) : false;
+        if (! $handle) {
+            $this->addError('importFile', 'Unable to open uploaded file.');
+            if ($tempStored) {
+                Storage::delete($tempStored);
+            }
+            return;
+        }
+
+        $header = fgetcsv($handle);
+        if ($header && isset($header[0])) {
+            $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // strip BOM
+        }
+        $header = $header ? array_map('strtolower', $header) : [];
+        $expected = ['name', 'subjects', 'payment', 'contact_number', 'is_active', 'note', 'available_days'];
+        $hasHeader = count(array_intersect($header, $expected)) >= 2;
+
+        $imported = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            $record = [];
+            if ($hasHeader) {
+                foreach ($header as $index => $key) {
+                    if (isset($row[$index])) {
+                        $record[$key] = $row[$index];
+                    }
+                }
+            } else {
+                $record = array_combine($expected, array_pad($row, count($expected), null));
+            }
+
+            $name = trim($record['name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+
+            $subjects = array_values(array_filter(array_map('trim', explode(',', $record['subjects'] ?? ''))));
+            $payment = is_numeric($record['payment'] ?? null) ? (float) $record['payment'] : null;
+            $contact = trim($record['contact_number'] ?? '');
+            $isActiveRaw = strtolower(trim($record['is_active'] ?? '1'));
+            $isActive = in_array($isActiveRaw, ['1', 'true', 'yes', 'active'], true);
+            $note = trim($record['note'] ?? '');
+            $availableDays = array_values(array_filter(array_map('trim', explode(',', $record['available_days'] ?? ''))));
+            $primarySubject = $subjects[0] ?? null;
+
+            Teacher::updateOrCreate(
+                ['name' => $name],
+                [
+                    'subject' => $primarySubject,
+                    'subjects' => $subjects,
+                    'payment' => $payment,
+                    'contact_number' => $contact ?: null,
+                    'is_active' => $isActive,
+                    'note' => $note ?: null,
+                    'available_days' => $availableDays,
+                    'created_by' => auth()->id(),
+                ]
+            );
+            $imported++;
+        }
+
+        fclose($handle);
+        if ($tempStored) {
+            Storage::delete($tempStored);
+        }
+
+        $this->importFile = null;
+        $this->resetPage();
+        if ($imported === 0) {
+            $this->addError('importFile', 'No rows were imported. Please check the file headers and data.');
+        } else {
+            $this->dispatch('notify', message: "Import complete. {$imported} teacher(s) processed.");
+        }
+    }
+
+    protected function authorizeManage(): void
+    {
+        if (! $this->canManage()) {
+            abort(403);
+        }
     }
 
     public function edit(int $teacherId): void

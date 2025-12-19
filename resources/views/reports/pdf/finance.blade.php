@@ -14,15 +14,14 @@
 <body>
     <h1>Finance Ledger</h1>
     <p>Period: {{ $start->format('d M Y') }} - {{ $end->format('d M Y') }}</p>
+    @php($manualIncomes = $manualIncomes ?? collect())
 
     <h3>Income</h3>
     <table>
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Student (Class / Section)</th>
-                <th>Mode</th>
-                <th>Receipt #</th>
+                <th>Description</th>
                 <th>Amount (৳)</th>
             </tr>
         </thead>
@@ -30,16 +29,32 @@
             @forelse ($payments as $payment)
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
-                    <td>{{ $payment->student->name }} ({{ \App\Support\AcademyOptions::classLabel($payment->student->class_level ?? '') }}, {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }})</td>
-                    <td>{{ $payment->payment_mode }}</td>
-                    <td>{{ $payment->receipt_number ?? 'N/A' }}</td>
+                    <td>
+                        {{ $payment->student->name }}
+                        ({{ \App\Support\AcademyOptions::classLabel($payment->student->class_level ?? '') }},
+                        {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }})
+                        - {{ $payment->payment_mode }}
+                        @if($payment->receipt_number)
+                            | Receipt #{{ $payment->receipt_number }}
+                        @endif
+                    </td>
                     <td>{{ number_format($payment->amount, 2) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="4">No payments.</td></tr>
+                <tr><td colspan="3">No payments.</td></tr>
+            @endforelse
+
+            @forelse ($manualIncomes as $income)
+                <tr>
+                    <td>{{ \Carbon\Carbon::parse($income->income_date)->format('d M Y') }}</td>
+                    <td>Manual Income - {{ $income->category }} @if($income->description) ({{ $income->description }}) @endif</td>
+                    <td>{{ number_format($income->amount, 2) }}</td>
+                </tr>
+            @empty
             @endforelse
         </tbody>
     </table>
+
     <p><strong>Total Income:</strong> ৳ {{ number_format($incomeTotal, 2) }}</p>
 
     <h3>Expenses</h3>
