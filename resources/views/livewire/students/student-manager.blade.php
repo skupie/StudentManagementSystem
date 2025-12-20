@@ -190,7 +190,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($students as $student)
-                    @php($outstanding = max(0, ($student->invoice_total_due ?? 0) - ($student->invoice_total_paid ?? 0)))
+                    @php($outstanding = max(0, $student->outstanding ?? 0))
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-2">
                             <button type="button" class="font-semibold text-indigo-600 hover:underline" wire:click="showProfileNote({{ $student->id }})">
