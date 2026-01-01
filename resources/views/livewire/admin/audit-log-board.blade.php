@@ -31,6 +31,30 @@
         </div>
     </div>
 
+    @if ($canManage)
+        <div class="bg-white shadow rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h4 class="font-semibold text-gray-800">CSV Import / Export</h4>
+                <p class="text-sm text-gray-500">Export audit logs or import a CSV backup.</p>
+            </div>
+            <div class="flex flex-col md:flex-row gap-3 md:items-end w-full md:w-auto">
+                <div>
+                    <x-input-label value="Import CSV" />
+                    <input type="file" wire:model="importFile" accept=".csv,text/csv" class="mt-1 block w-full text-sm">
+                    <x-input-error :messages="$errors->get('importFile')" class="mt-1" />
+                </div>
+                <div class="flex gap-2">
+                    <x-secondary-button type="button" wire:click="exportCsv">
+                        Export CSV
+                    </x-secondary-button>
+                    <x-primary-button type="button" wire:click="importCsv" wire:loading.attr="disabled">
+                        Import CSV
+                    </x-primary-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white shadow rounded-lg p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm divide-y divide-gray-200">
