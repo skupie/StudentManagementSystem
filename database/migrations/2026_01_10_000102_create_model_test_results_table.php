@@ -16,12 +16,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('model_test_id')->constrained('model_tests')->cascadeOnDelete();
             $table->foreignId('model_test_student_id')->constrained('model_test_students')->cascadeOnDelete();
+            $table->string('student_name')->nullable();
+            $table->string('student_section')->nullable();
             $table->unsignedInteger('year')->default((int) date('Y'));
             $table->string('subject')->nullable();
             $table->boolean('optional_subject')->default(false);
             $table->decimal('mcq_mark', 6, 2)->nullable();
             $table->decimal('cq_mark', 6, 2)->nullable();
             $table->decimal('practical_mark', 6, 2)->nullable();
+            $table->decimal('mcq_max', 6, 2)->nullable();
+            $table->decimal('cq_max', 6, 2)->nullable();
+            $table->decimal('practical_max', 6, 2)->nullable();
             $table->decimal('total_mark', 7, 2)->nullable();
             $table->string('grade', 3)->nullable();
             $table->decimal('grade_point', 3, 2)->nullable();

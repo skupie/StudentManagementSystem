@@ -6,9 +6,12 @@ use App\Models\Routine;
 use App\Models\Teacher;
 use App\Support\AcademyOptions;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class RoutineBuilder extends Component
 {
+    use WithFileUploads;
+
     public array $form = [
         'class_level' => 'hsc_1',
         'section' => 'science',
@@ -20,6 +23,8 @@ class RoutineBuilder extends Component
 
     public string $viewDate = '';
     public ?int $editingId = null;
+    public $importFile;
+    public ?int $confirmingDeleteId = null;
 
     protected function rules(): array
     {
@@ -30,6 +35,7 @@ class RoutineBuilder extends Component
             'form.time_slot' => ['required', 'string', 'max:50'],
             'form.subject' => ['required', 'string', 'max:255'],
             'form.teacher_id' => ['nullable', 'exists:teachers,id'],
+            'importFile' => ['nullable', 'file', 'mimes:csv,txt'],
         ];
     }
 
@@ -99,6 +105,129 @@ class RoutineBuilder extends Component
         $this->editingId = null;
 
         $this->dispatch('notify', message: 'Routine entry saved.');
+    }
+
+    public function promptDelete(int $routineId): void
+    {
+        $this->confirmingDeleteId = $routineId;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if (! $this->confirmingDeleteId) {
+            return;
+        }
+
+        Routine::whereKey($this->confirmingDeleteId)->delete();
+        $this->confirmingDeleteId = null;
+        $this->dispatch('notify', message: 'Routine entry deleted.');
+    }
+
+    public function exportCsv()
+    {
+        $routines = Routine::query()
+            ->orderBy('routine_date')
+            ->orderBy('class_level')
+            ->orderBy('section')
+            ->orderBy('time_slot')
+            ->get();
+
+        $filename = 'routines-all-' . now()->format('Ymd-His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($routines) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, ['class_level', 'section', 'routine_date', 'time_slot', 'subject', 'teacher_id']);
+            foreach ($routines as $row) {
+                fputcsv($handle, [
+                    $row->class_level,
+                    $row->section,
+                    $row->routine_date,
+                    $row->time_slot,
+                    $row->subject,
+                    $row->teacher_id,
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->streamDownload($callback, $filename, $headers);
+    }
+
+    public function importCsv(): void
+    {
+        $this->validateOnly('importFile');
+
+        if (! $this->importFile) {
+            return;
+        }
+
+        $path = $this->importFile->store('imports');
+        $handle = $path ? \Storage::readStream($path) : false;
+        if (! $handle) {
+            $this->addError('importFile', 'Unable to read uploaded file.');
+            return;
+        }
+
+        // Skip header
+        $header = fgetcsv($handle);
+        if ($header && isset($header[0])) {
+            $header[0] = ltrim($header[0], "\xEF\xBB\xBF");
+        }
+        $header = $header ? array_map(fn ($h) => strtolower(trim($h)), $header) : [];
+        $expected = ['class_level', 'section', 'routine_date', 'time_slot', 'subject', 'teacher_id'];
+        $hasHeader = count(array_intersect($header, $expected)) >= 3;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $record = [];
+            if ($hasHeader) {
+                foreach ($header as $index => $key) {
+                    if (isset($row[$index])) {
+                        $record[$key] = $row[$index];
+                    }
+                }
+            } else {
+                $record = array_combine($expected, array_pad($row, count($expected), null));
+            }
+
+            $class = trim($record['class_level'] ?? '');
+            $section = trim($record['section'] ?? '');
+            $date = trim($record['routine_date'] ?? '');
+            $time = trim($record['time_slot'] ?? '');
+            $subject = trim($record['subject'] ?? '');
+            $teacherId = trim($record['teacher_id'] ?? '');
+
+            if ($class === '' || $section === '' || $date === '' || $time === '' || $subject === '') {
+                continue;
+            }
+
+            Routine::create([
+                'class_level' => $class,
+                'section' => $section,
+                'routine_date' => $date,
+                'time_slot' => $time,
+                'subject' => $subject,
+                'teacher_id' => $teacherId !== '' ? $teacherId : null,
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        fclose($handle);
+        if ($path) {
+            \Storage::delete($path);
+        }
+
+        $this->importFile = null;
+        $this->dispatch('notify', message: 'Routine CSV import complete.');
     }
 
     public function render()

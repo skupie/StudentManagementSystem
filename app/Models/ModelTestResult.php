@@ -12,12 +12,17 @@ class ModelTestResult extends Model
     protected $fillable = [
         'model_test_id',
         'model_test_student_id',
+        'student_name',
+        'student_section',
         'year',
         'subject',
         'optional_subject',
         'mcq_mark',
         'cq_mark',
         'practical_mark',
+        'mcq_max',
+        'cq_max',
+        'practical_max',
         'total_mark',
         'grade',
         'grade_point',
@@ -42,7 +47,7 @@ class ModelTestResult extends Model
         return $this->belongsTo(ModelTestStudent::class, 'model_test_student_id');
     }
 
-    public static function gradeForScore(float $score): array
+    public static function gradeForScore(float $percentage): array
     {
         $breakdown = [
             80 => ['A+', 5.00],
@@ -55,7 +60,7 @@ class ModelTestResult extends Model
         ];
 
         foreach ($breakdown as $min => [$grade, $point]) {
-            if ($score >= $min) {
+            if ($percentage >= $min) {
                 return ['grade' => $grade, 'point' => $point];
             }
         }

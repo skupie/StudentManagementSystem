@@ -7,11 +7,15 @@ use App\Models\ModelTestResult;
 use App\Models\ModelTestStudent;
 use App\Models\Student;
 use App\Support\AcademyOptions;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class ModelTestManager extends Component
 {
+    use WithPagination;
+
     public array $studentForm = [
         'name' => '',
         'contact_number' => '',
@@ -46,6 +50,10 @@ class ModelTestManager extends Component
         'practical_max' => null,
         'optional_subject' => false,
     ];
+
+    public ?int $editingResultId = null;
+    public ?int $confirmingDeleteId = null;
+    public ?string $confirmingDeleteName = null;
 
     public function mount(): void
     {
@@ -89,6 +97,11 @@ class ModelTestManager extends Component
         $selectedTest = $tests->firstWhere('id', $this->marksForm['model_test_id']);
         $markType = $this->marksForm['test_type'] ?? ($selectedTest->type ?? 'full');
         $maxMarks = $this->maxMarks($resolvedMarksSection ?? 'science', $markType, $this->marksForm['subject'] ?? null);
+        $results = ModelTestResult::with(['student', 'test'])
+            ->when($marksSection, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('section', $marksSection)))
+            ->when($this->marksForm['year'], fn ($q) => $q->where('year', $this->marksForm['year']))
+            ->orderByDesc('created_at')
+            ->paginate(10);
 
         return view('livewire.model-tests.model-test-manager', [
             'students' => $students,
@@ -102,6 +115,7 @@ class ModelTestManager extends Component
             'marksSection' => $resolvedMarksSection,
             'markType' => $markType,
             'maxMarks' => $maxMarks,
+            'results' => $results,
         ]);
     }
 
@@ -152,6 +166,9 @@ class ModelTestManager extends Component
     {
         $section = $this->currentMarksSection();
         $this->initializeCustomMax($section, $this->marksForm['test_type'], $value, true);
+        $this->marksForm['mcq_mark'] = null;
+        $this->marksForm['cq_mark'] = null;
+        $this->marksForm['practical_mark'] = null;
     }
 
     public function createStudent(): void
@@ -264,46 +281,142 @@ class ModelTestManager extends Component
         $type = $test->type ?: 'full';
         $max = $this->maxMarks($section, $type, $marks['subject'] ?? null);
 
-        $mcq = $type !== 'cq' ? (float) ($marks['mcq_mark'] ?? 0) : null;
+        $isCqOnly = $this->isCqOnlySubject($marks['subject'] ?? '');
+
+        $mcq = $type !== 'cq' && ! $isCqOnly ? (float) ($marks['mcq_mark'] ?? 0) : null;
         $cq = $type !== 'mcq' ? (float) ($marks['cq_mark'] ?? 0) : null;
         $practical = $type === 'full' && $max['practical'] > 0
             ? (float) ($marks['practical_mark'] ?? 0)
             : null;
 
-        $total = 0;
-        if ($type === 'full') {
-            $total = ($mcq ?? 0) + ($cq ?? 0) + ($practical ?? 0);
-        } elseif ($type === 'mcq') {
-            $total = $mcq ?? 0;
-        } else {
-            $total = $cq ?? 0;
-        }
-
-        $gradeData = ModelTestResult::gradeForScore($total);
-
-        ModelTestResult::updateOrCreate(
-            [
-                'model_test_id' => $test->id,
-                'model_test_student_id' => $student->id,
-                'year' => (int) $marks['year'],
-                'subject' => $marks['subject'],
-            ],
-            [
-                'mcq_mark' => $mcq,
-                'cq_mark' => $cq,
-                'practical_mark' => $practical,
-                'total_mark' => $total,
-                'grade' => $gradeData['grade'],
-                'grade_point' => $gradeData['point'],
-                'optional_subject' => (bool) ($marks['optional_subject'] ?? false),
-            ]
+        $total = ($mcq ?? 0) + ($cq ?? 0) + ($practical ?? 0);
+        $gradeData = $this->gradeFromComponents(
+            $mcq,
+            $cq,
+            $practical,
+            (float) ($max['mcq'] ?? 0),
+            (float) ($max['cq'] ?? 0),
+            (float) ($max['practical'] ?? 0)
         );
+
+        try {
+            if ($this->editingResultId) {
+                $result = ModelTestResult::find($this->editingResultId);
+                if ($result) {
+                    $result->update([
+                        'model_test_id' => $test->id,
+                        'model_test_student_id' => $student->id,
+                        'student_name' => $student->name,
+                        'student_section' => $student->section,
+                        'year' => (int) $marks['year'],
+                        'subject' => $marks['subject'],
+                        'mcq_mark' => $mcq,
+                        'cq_mark' => $cq,
+                        'practical_mark' => $practical,
+                        'mcq_max' => $max['mcq'],
+                        'cq_max' => $max['cq'],
+                        'practical_max' => $max['practical'],
+                        'total_mark' => $total,
+                        'grade' => $gradeData['grade'],
+                        'grade_point' => $gradeData['point'],
+                        'optional_subject' => (bool) ($marks['optional_subject'] ?? false),
+                    ]);
+                }
+            } else {
+                ModelTestResult::create([
+                    'model_test_id' => $test->id,
+                    'model_test_student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'student_section' => $student->section,
+                    'year' => (int) $marks['year'],
+                    'subject' => $marks['subject'],
+                    'mcq_mark' => $mcq,
+                    'cq_mark' => $cq,
+                    'practical_mark' => $practical,
+                    'mcq_max' => $max['mcq'],
+                    'cq_max' => $max['cq'],
+                    'practical_max' => $max['practical'],
+                    'total_mark' => $total,
+                    'grade' => $gradeData['grade'],
+                    'grade_point' => $gradeData['point'],
+                    'optional_subject' => (bool) ($marks['optional_subject'] ?? false),
+                ]);
+            }
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'mt_results_unique')) {
+                $this->addError('marksForm.subject', 'Subject already exists for this student and test.');
+                return;
+            }
+            throw $e;
+        }
 
         $this->marksForm['mcq_mark'] = null;
         $this->marksForm['cq_mark'] = null;
         $this->marksForm['practical_mark'] = null;
+        $this->editingResultId = null;
+        $this->resetPage();
 
         $this->dispatch('notify', message: 'Marks saved.');
+    }
+
+    public function editResult(int $resultId): void
+    {
+        $result = ModelTestResult::with(['student', 'test'])->find($resultId);
+        if (! $result) {
+            return;
+        }
+
+        $this->editingResultId = $result->id;
+        $this->marksForm['student_id'] = $result->model_test_student_id;
+        $this->marksForm['model_test_id'] = $result->model_test_id;
+        $this->marksForm['year'] = $result->year;
+        $this->marksForm['subject'] = $result->subject;
+        $this->marksForm['test_type'] = $result->test?->type ?? 'full';
+        $this->marksForm['mcq_mark'] = $result->mcq_mark;
+        $this->marksForm['cq_mark'] = $result->cq_mark;
+        $this->marksForm['practical_mark'] = $result->practical_mark;
+        $this->marksForm['optional_subject'] = (bool) $result->optional_subject;
+
+        $section = $result->student?->section;
+        $this->marksSectionFilter = $this->normalizeSectionKey($section ?? '') ?? '';
+        $this->resetSubjectForSection($section);
+        $this->initializeCustomMax($section, $this->marksForm['test_type'], $this->marksForm['subject'], true);
+        // Ensure max fields reflect current defaults when editing
+        $max = $this->maxMarks($section ?? 'science', $this->marksForm['test_type'], $this->marksForm['subject']);
+        $this->marksForm['mcq_max'] = $result->mcq_max ?? $max['mcq'];
+        $this->marksForm['cq_max'] = $result->cq_max ?? $max['cq'];
+        $this->marksForm['practical_max'] = $result->practical_max ?? $max['practical'];
+    }
+
+    public function promptDelete(int $resultId): void
+    {
+        $result = ModelTestResult::with('student')->find($resultId);
+        if (! $result) {
+            return;
+        }
+
+        $this->confirmingDeleteId = $result->id;
+        $this->confirmingDeleteName = $result->student?->name ?? 'this record';
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+        $this->confirmingDeleteName = null;
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if (! $this->confirmingDeleteId) {
+            return;
+        }
+
+        ModelTestResult::whereKey($this->confirmingDeleteId)->delete();
+        $this->confirmingDeleteId = null;
+        $this->confirmingDeleteName = null;
+        $this->editingResultId = null;
+        $this->resetPage();
+        $this->dispatch('notify', message: 'Marks deleted.');
     }
 
     protected function marksRules(): array
@@ -330,7 +443,9 @@ class ModelTestManager extends Component
         ];
 
         if ($type === 'full') {
-            $rules['marksForm.mcq_mark'] = ['required', 'numeric', 'min:0', 'max:' . $max['mcq']];
+            $rules['marksForm.mcq_mark'] = $this->isCqOnlySubject($this->marksForm['subject'] ?? '')
+                ? ['nullable', 'numeric', 'min:0', 'max:' . $max['mcq']]
+                : ['required', 'numeric', 'min:0', 'max:' . $max['mcq']];
             $rules['marksForm.cq_mark'] = ['required', 'numeric', 'min:0', 'max:' . $max['cq']];
             if ($max['practical'] > 0) {
                 $rules['marksForm.practical_mark'] = ['nullable', 'numeric', 'min:0', 'max:' . $max['practical']];
@@ -362,18 +477,23 @@ class ModelTestManager extends Component
         }
 
         // Full model test
-        if ($isScience) {
+        $isCqOnly = $this->isCqOnlySubject($subject);
+        $practicalAllowed = $this->isPracticalAllowed($section, $subject);
+        $isIct = $this->normalizeSubjectKey($subject ?? '') === 'ict';
+
+        // ICT uses science defaults for all sections
+        if ($isScience || $isIct) {
             return [
-                'mcq' => $mcqMaxOverride ?? 25,
+                'mcq' => $mcqMaxOverride ?? ($isCqOnly ? 0 : 25),
                 'cq' => $cqMaxOverride ?? 50,
-                'practical' => $practicalMaxOverride ?? 25,
+                'practical' => $practicalAllowed ? ($practicalMaxOverride ?? 25) : 0,
             ];
         }
 
         return [
-            'mcq' => $mcqMaxOverride ?? 30,
+            'mcq' => $mcqMaxOverride ?? ($isCqOnly ? 0 : 30),
             'cq' => $cqMaxOverride ?? 70,
-            'practical' => $practicalMaxOverride ?? 0,
+            'practical' => $isIct && $practicalAllowed ? ($practicalMaxOverride ?? 25) : 0,
         ];
     }
 
@@ -459,9 +579,94 @@ class ModelTestManager extends Component
         if ($forceReset || $this->marksForm['cq_max'] === null) {
             $this->marksForm['cq_max'] = $defaults['cq'];
         }
-        if ($forceReset || $this->marksForm['practical_max'] === null) {
+        if ($forceReset || $this->marksForm['practical_max'] === null || $this->marksForm['practical_max'] !== $defaults['practical']) {
             $this->marksForm['practical_max'] = $defaults['practical'];
         }
+
+        // If practical is not allowed, clear any entered value so the UI can hide it cleanly.
+        if ($defaults['practical'] <= 0) {
+            $this->marksForm['practical_mark'] = null;
+        }
+    }
+
+    protected function isCqOnlySubject(?string $subject): bool
+    {
+        if (! $subject) {
+            return false;
+        }
+
+        $key = strtolower(trim($subject));
+        return str_contains($key, 'english');
+    }
+
+    protected function isPracticalAllowed(?string $section, ?string $subject): bool
+    {
+        $key = $this->normalizeSubjectKey($subject);
+        $raw = strtolower(trim($subject ?? ''));
+
+        $allowed = [
+            'physics',
+            'chemistry',
+            'math',
+            'botany',
+            'zoology',
+            'ict',
+        ];
+
+        $matchesAllowed = in_array($key, $allowed, true) || $this->stringContainsAny($raw, $allowed);
+        if (! $matchesAllowed) {
+            return false;
+        }
+
+        // ICT practical allowed for all sections; others only for science
+        if ($key === 'ict' || str_contains($raw, 'ict')) {
+            return true;
+        }
+
+        return $this->normalizeSectionKey($section ?? '') === 'science';
+    }
+
+    protected function normalizeSubjectKey(?string $subject): string
+    {
+        if (! $subject) {
+            return '';
+        }
+
+        $key = strtolower(trim($subject));
+        return preg_replace('/[\\s_-]*(1st|2nd|3rd|4th)$/i', '', $key) ?? $key;
+    }
+
+    protected function stringContainsAny(string $haystack, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if ($needle !== '' && str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Calculate grade/point using section pass thresholds and total obtained marks (MCQ + CQ + practical).
+     */
+    protected function gradeFromComponents(?float $mcq, ?float $cq, ?float $practical, float $mcqMax, float $cqMax, float $practicalMax): array
+    {
+        $mcqVal = $mcq ?? 0.0;
+        $cqVal = $cq ?? 0.0;
+        $practicalVal = $practical ?? 0.0;
+
+        // Section percentages to determine fails
+        $mcqPercent = $mcqMax > 0 ? ($mcqVal / $mcqMax) * 100 : null;
+        $cqPercent = $cqMax > 0 ? ($cqVal / $cqMax) * 100 : null;
+
+        if (($mcqPercent !== null && $mcqPercent < 33) || ($cqPercent !== null && $cqPercent < 33)) {
+            return ['grade' => 'F', 'point' => 0.00];
+        }
+
+        $obtained = $mcqVal + $cqVal + $practicalVal;
+
+        return ModelTestResult::gradeForScore($obtained);
     }
 
     protected function resetStudentForm(): void
