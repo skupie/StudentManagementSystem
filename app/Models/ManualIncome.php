@@ -14,6 +14,7 @@ class ManualIncome extends Model
         'income_date',
         'category',
         'amount',
+        'receipt_number',
         'description',
         'recorded_by',
     ];

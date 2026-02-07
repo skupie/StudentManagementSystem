@@ -88,6 +88,11 @@ class LedgerBoard extends Component
             ->whereBetween('income_date', [$this->rangeStart, $this->rangeEnd])
             ->orderByDesc('income_date');
 
+        $manualAdmissionQuery = ManualIncome::query()
+            ->where('category', 'Admission Fee')
+            ->whereBetween('income_date', [$this->rangeStart, $this->rangeEnd])
+            ->orderByDesc('income_date');
+
         $expenseQuery = Expense::query()
             ->whereBetween('expense_date', [$this->rangeStart, $this->rangeEnd])
             ->orderByDesc('expense_date');
@@ -102,7 +107,35 @@ class LedgerBoard extends Component
             + ManualIncome::whereBetween('income_date', [$prevStart, $prevEnd])->sum('amount'))
             - Expense::whereBetween('expense_date', [$prevStart, $prevEnd])->sum('amount');
 
-        $payments = $incomeQuery->paginate(15, ['*'], 'paymentsPage');
+        $feePayments = $incomeQuery->get();
+        $admissionIncomes = $manualAdmissionQuery->get();
+
+        $recentPaymentsCombined = collect();
+        foreach ($feePayments as $payment) {
+            $recentPaymentsCombined->push([
+                'type' => 'fee',
+                'date' => $payment->payment_date,
+                'model' => $payment,
+            ]);
+        }
+        foreach ($admissionIncomes as $income) {
+            $recentPaymentsCombined->push([
+                'type' => 'admission',
+                'date' => $income->income_date,
+                'model' => $income,
+            ]);
+        }
+
+        $recentPaymentsCombined = $recentPaymentsCombined->sortByDesc('date')->values();
+        $paymentPage = LengthAwarePaginator::resolveCurrentPage('paymentsPage');
+        $paymentsPerPage = 15;
+        $payments = new LengthAwarePaginator(
+            $recentPaymentsCombined->forPage($paymentPage, $paymentsPerPage),
+            $recentPaymentsCombined->count(),
+            $paymentsPerPage,
+            $paymentPage,
+            ['pageName' => 'paymentsPage']
+        );
         $expenses = $expenseQuery->get();
         $manualIncomes = $manualIncomeQuery->get();
 

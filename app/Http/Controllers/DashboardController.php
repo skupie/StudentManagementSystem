@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Expense;
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
+use App\Models\ManualIncome;
 use App\Models\Student;
 use App\Models\StudentNote;
 use App\Models\User;
@@ -61,9 +62,26 @@ class DashboardController extends Controller
             ->groupBy('class_level')
             ->pluck('total', 'class_level');
 
+        $recentPayments = collect();
+        foreach (FeePayment::with('student')->latest('payment_date')->take(4)->get() as $payment) {
+            $recentPayments->push([
+                'type' => 'fee',
+                'date' => $payment->payment_date,
+                'model' => $payment,
+            ]);
+        }
+        foreach (ManualIncome::where('category', 'Admission Fee')->latest('income_date')->take(4)->get() as $income) {
+            $recentPayments->push([
+                'type' => 'admission',
+                'date' => $income->income_date,
+                'model' => $income,
+            ]);
+        }
+        $recentPayments = $recentPayments->sortByDesc('date')->take(4)->values();
+
         $recentActivities = [
             'students' => Student::latest()->take(4)->get(),
-            'payments' => FeePayment::with('student')->latest('payment_date')->take(4)->get(),
+            'payments' => $recentPayments,
             'notes' => StudentNote::with('student')->latest('note_date')->take(4)->get(),
             'expenses' => Expense::latest('expense_date')->take(4)->get(),
             'instructors' => User::where('role', 'instructor')->latest()->take(4)->get(),

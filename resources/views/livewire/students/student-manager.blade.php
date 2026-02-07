@@ -1,4 +1,42 @@
-<div class="bg-white shadow rounded-lg p-6 space-y-6">
+<div
+    x-data="{ show: false, message: '', timer: null }"
+    x-on:student-enrolled.window="
+        message = $event.detail?.message || 'Student enrolled successfully.';
+        show = true;
+        clearTimeout(timer);
+        timer = setTimeout(() => { show = false; }, 2600);
+    "
+    class="bg-white shadow rounded-lg p-6 space-y-6"
+>
+    <div
+        x-show="show"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+        class="fixed inset-0 z-[1100] flex items-center justify-center pointer-events-none"
+    >
+        <div class="relative overflow-hidden rounded-xl border border-green-100 bg-white shadow-2xl pointer-events-auto">
+            <div class="px-5 py-4 flex items-center gap-3">
+                <div class="enroll-badge">
+                    <svg viewBox="0 0 24 24" class="w-6 h-6 text-white">
+                        <path fill="currentColor" d="M9.2 16.2l-3.4-3.4 1.4-1.4 2 2 6-6 1.4 1.4-7.4 7.4z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-sm font-semibold text-gray-900">Student Enrolled Seccuessfully</div>
+                    <div class="text-xs text-gray-600" x-text="message"></div>
+                </div>
+            </div>
+            <div class="enroll-glow"></div>
+            <span class="sparkle s1"></span>
+            <span class="sparkle s2"></span>
+            <span class="sparkle s3"></span>
+        </div>
+    </div>
     <div class="grid md:grid-cols-4 gap-4">
         <div>
             <x-input-label value="Search by name or phone" />
@@ -123,6 +161,16 @@
             <x-input-label value="Monthly Payment (৳)" />
             <x-text-input type="number" step="0.01" wire:model.defer="form.monthly_fee" class="mt-1 block w-full" />
             <x-input-error :messages="$errors->get('form.monthly_fee')" class="mt-1" />
+        </div>
+        <div>
+            <x-input-label value="Admission Fee (৳)" />
+            <x-text-input type="number" step="0.01" wire:model.defer="form.admission_fee" class="mt-1 block w-full" />
+            <x-input-error :messages="$errors->get('form.admission_fee')" class="mt-1" />
+        </div>
+        <div>
+            <x-input-label value="Admission Receipt #" />
+            <x-text-input type="text" wire:model.defer="form.admission_receipt_number" class="mt-1 block w-full" />
+            <x-input-error :messages="$errors->get('form.admission_receipt_number')" class="mt-1" />
         </div>
         <div>
             <x-input-label value="Enrollment Date" />
@@ -402,5 +450,53 @@
             </div>
         </div>
     @endif
+    <style>
+        [x-cloak] { display: none !important; }
+        .enroll-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            animation: enroll-pop 420ms ease-out;
+            box-shadow: 0 10px 24px rgba(34, 197, 94, 0.35);
+        }
+        .enroll-glow {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(120px 60px at 10% 0%, rgba(34, 197, 94, 0.18), transparent 60%);
+            pointer-events: none;
+            animation: enroll-glow 1400ms ease-out;
+        }
+        .sparkle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            background: #86efac;
+            opacity: 0;
+            animation: sparkle 1200ms ease-out;
+        }
+        .sparkle.s1 { top: 8px; right: 18px; animation-delay: 80ms; }
+        .sparkle.s2 { top: 20px; right: 6px; animation-delay: 160ms; }
+        .sparkle.s3 { top: 34px; right: 28px; animation-delay: 240ms; }
 
+        @keyframes enroll-pop {
+            0% { transform: scale(0.7); opacity: 0; }
+            60% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        @keyframes enroll-glow {
+            0% { opacity: 0; transform: translateY(-6px); }
+            40% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(8px); }
+        }
+        @keyframes sparkle {
+            0% { opacity: 0; transform: translateY(0) scale(0.6); }
+            30% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-12px) scale(1.1); }
+        }
+    </style>
 </div>

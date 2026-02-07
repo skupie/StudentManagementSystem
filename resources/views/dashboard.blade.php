@@ -113,7 +113,13 @@
                             <p class="text-xs text-gray-500">Payments</p>
                             <ul class="text-sm space-y-1">
                                 @foreach ($recentActivities['payments'] as $payment)
-                                    <li>{{ $payment->student->name ?? 'Student' }} paid {{ $formatter($payment->amount) }}</li>
+                                    @if ($payment['type'] === 'fee')
+                                        @php($item = $payment['model'])
+                                        <li>{{ $item->student->name ?? 'Student' }} paid {{ $formatter($item->amount) }}</li>
+                                    @else
+                                        @php($item = $payment['model'])
+                                        <li>{{ $item->description }} paid {{ $formatter($item->amount) }}</li>
+                                    @endif
                                 @endforeach
                             </ul>
                         </div>
@@ -209,10 +215,6 @@
                     </div>
                 </div>
             @elseif ($user->isAssistant())
-                @php
-                    $hscOneCount = $classDistribution['hsc_1'] ?? 0;
-                    $hscTwoCount = $classDistribution['hsc_2'] ?? 0;
-                @endphp
                 <div class="grid md:grid-cols-4 gap-4">
                     <div class="p-4 bg-white rounded-lg shadow">
                         <p class="text-sm text-gray-500">Total Students</p>
@@ -235,11 +237,11 @@
                 <div class="grid md:grid-cols-2 gap-4">
                     <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg shadow-sm">
                         <p class="text-sm text-gray-600">HSC 1st Year</p>
-                        <p class="text-2xl font-bold text-blue-700 mt-1">{{ $hscOneCount }}</p>
+                        <p class="text-2xl font-bold text-blue-700 mt-1">{{ $classDistribution['hsc_1'] ?? 0 }}</p>
                     </div>
                     <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm">
                         <p class="text-sm text-gray-600">HSC 2nd Year</p>
-                        <p class="text-2xl font-bold text-indigo-700 mt-1">{{ $hscTwoCount }}</p>
+                        <p class="text-2xl font-bold text-indigo-700 mt-1">{{ $classDistribution['hsc_2'] ?? 0 }}</p>
                     </div>
                 </div>
 

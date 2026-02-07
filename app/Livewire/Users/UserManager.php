@@ -14,6 +14,7 @@ class UserManager extends Component
 
     public string $search = '';
     public string $pinReset = '';
+    public string $artisanPinReset = '';
 
     public array $form = [
         'name' => '',
@@ -64,7 +65,7 @@ class UserManager extends Component
 
         $this->resetForm();
 
-        $this->dispatch('notify', message: 'User created successfully.');
+        $this->dispatch('user-notify', message: 'User created successfully.');
     }
 
     public function resetForm(): void
@@ -103,6 +104,20 @@ class UserManager extends Component
         \Illuminate\Support\Facades\Cache::forever('transfer_pin_override', $this->pinReset);
         $this->pinReset = '';
 
-        $this->dispatch('notify', message: 'Transfer PIN reset successfully.');
+        $this->dispatch('user-notify', message: 'Transfer PIN reset successfully.');
+    }
+
+    public function resetArtisanPin(): void
+    {
+        abort_unless(auth()->user()?->role === 'admin', 403);
+
+        $this->validate([
+            'artisanPinReset' => ['required', 'string', 'min:4', 'max:20'],
+        ]);
+
+        \Illuminate\Support\Facades\Cache::forever('artisan_pin_override', $this->artisanPinReset);
+        $this->artisanPinReset = '';
+
+        $this->dispatch('user-notify', message: 'Artisan PIN reset successfully.');
     }
 }

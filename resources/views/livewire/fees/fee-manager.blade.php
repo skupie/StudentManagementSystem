@@ -1,4 +1,47 @@
-<div class="space-y-6">
+<div
+    x-data="{ show: false, message: '', timer: null, tone: 'success', title: 'Success' }"
+    x-on:notify.window="
+        message = $event.detail?.message || 'Saved successfully.';
+        if (message.toLowerCase().includes('invoice')) { tone = 'info'; title = 'Invoice'; }
+        else if (message.toLowerCase().includes('payment')) { tone = 'success'; title = 'Payment'; }
+        else { tone = 'success'; title = 'Success'; }
+        show = true;
+        clearTimeout(timer);
+        timer = setTimeout(() => { show = false; }, 2400);
+    "
+    class="space-y-6"
+>
+    <div
+        x-show="show"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+        class="fixed inset-0 z-[1100] flex items-center justify-center pointer-events-none"
+    >
+        <div class="pointer-events-auto rounded-xl shadow-2xl px-5 py-4 flex items-center gap-3 border"
+             :style="tone === 'info'
+                ? 'background: #eff6ff; border-color: #93c5fd;'
+                : 'background: #ecfdf5; border-color: #6ee7b7;'">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white shadow"
+                 :style="tone === 'info'
+                    ? 'background: linear-gradient(135deg, #60a5fa, #2563eb);'
+                    : 'background: linear-gradient(135deg, #34d399, #059669);'">
+                <svg viewBox="0 0 24 24" class="w-5 h-5">
+                    <path fill="currentColor" d="M9.2 16.2l-3.4-3.4 1.4-1.4 2 2 6-6 1.4 1.4-7.4 7.4z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-sm font-semibold"
+                     :style="tone === 'info' ? 'color: #1e3a8a;' : 'color: #065f46;'"
+                     x-text="title"></div>
+                <div class="text-xs text-gray-600" x-text="message"></div>
+            </div>
+        </div>
+    </div>
     <div class="grid md:grid-cols-2 gap-4">
         <div class="bg-white shadow rounded-lg p-4">
             <div class="text-sm text-gray-500">Outstanding Fees</div>
@@ -155,34 +198,67 @@
                         <tbody class="divide-y divide-gray-100">
                             @forelse ($recentPayments as $payment)
                                 <tr>
-                                    <td class="px-3 py-2">{{ optional($payment->payment_date)->format('d M Y') }}</td>
-                                    <td class="px-3 py-2">
-                                        <button type="button" class="font-semibold text-gray-900 underline" wire:click="showPaymentLog({{ $payment->id }})">
-                                            {{ $payment->student->name }}
-                                        </button>
-                                        <div class="text-xs text-gray-500">
-                                            {{ \App\Support\AcademyOptions::classLabel($payment->student->class_level ?? '') }},
-                                            {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }}
-                                        </div>
-                                        @php($invoiceScholarship = optional($payment->invoice)->scholarship_amount ?? 0)
-                                        @if ($invoiceScholarship > 0)
-                                            <div class="text-xs text-blue-600">
-                                                Scholarship ৳ {{ number_format($invoiceScholarship, 2) }}
-                                                (Base ৳ {{ number_format(optional($payment->invoice)->gross_amount ?? 0, 2) }})
+                                    @if ($payment['type'] === 'fee')
+                                        @php($item = $payment['model'])
+                                        <td class="px-3 py-2">{{ optional($item->payment_date)->format('d M Y') }}</td>
+                                        <td class="px-3 py-2">
+                                            <button type="button" class="font-semibold text-gray-900 underline" wire:click="showPaymentLog({{ $item->id }})">
+                                                {{ $item->student->name }}
+                                            </button>
+                                            <div class="text-xs text-gray-500">
+                                                {{ \App\Support\AcademyOptions::classLabel($item->student->class_level ?? '') }},
+                                                {{ \App\Support\AcademyOptions::sectionLabel($item->student->section ?? '') }}
                                             </div>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        {{ optional(optional($payment->invoice)->billing_month)->format('M Y') ?? '—' }}
-                                    </td>
-                                    <td class="px-3 py-2">{{ $payment->payment_mode ?? '—' }}</td>
-                                    <td class="px-3 py-2">{{ $payment->receipt_number }}</td>
-                                    <td class="px-3 py-2 text-green-600 font-semibold">৳ {{ number_format($payment->amount, 2) }}</td>
-                                    <td class="px-3 py-2 text-right">
-                                        <x-secondary-button type="button" wire:click="editPayment({{ $payment->id }})" class="text-xs">
-                                            Edit
-                                        </x-secondary-button>
-                                    </td>
+                                            @php($invoiceScholarship = optional($item->invoice)->scholarship_amount ?? 0)
+                                            @if ($invoiceScholarship > 0)
+                                                <div class="text-xs text-blue-600">
+                                                    Scholarship ৳ {{ number_format($invoiceScholarship, 2) }}
+                                                    (Base ৳ {{ number_format(optional($item->invoice)->gross_amount ?? 0, 2) }})
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            {{ optional(optional($item->invoice)->billing_month)->format('M Y') ?? '—' }}
+                                        </td>
+                                        <td class="px-3 py-2">{{ $item->payment_mode ?? '—' }}</td>
+                                        <td class="px-3 py-2">{{ $item->receipt_number }}</td>
+                                        <td class="px-3 py-2 text-green-600 font-semibold">৳ {{ number_format($item->amount, 2) }}</td>
+                                        <td class="px-3 py-2 text-right">
+                                            <x-secondary-button type="button" wire:click="editPayment({{ $item->id }})" class="text-xs">
+                                                Edit
+                                            </x-secondary-button>
+                                        </td>
+                                    @else
+                                        @php($item = $payment['model'])
+                                        <td class="px-3 py-2">{{ optional($item->income_date)->format('d M Y') }}</td>
+                                        <td class="px-3 py-2">
+                                            @php($studentName = 'Student')
+                                            @php($studentClass = '')
+                                            @php($studentSection = '')
+                                            @if (!empty($item->description) && preg_match('/^Admission fee for\s*(.+?)\s*-\s*(.+?)\s*-\s*(.+?)\s*$/i', $item->description, $matches))
+                                                @php($studentName = trim($matches[1]))
+                                                @php($studentClass = trim($matches[2]))
+                                                @php($studentSection = trim($matches[3]))
+                                            @elseif (!empty($item->description) && preg_match('/^Admission fee for\s*(.+?)(?:\s*-|$)/i', $item->description, $matches))
+                                                @php($studentName = trim($matches[1]))
+                                            @endif
+                                            <div class="font-semibold text-gray-900">{{ $studentName }}</div>
+                                            <div class="text-xs text-gray-500">
+                                                @if ($studentClass !== '' || $studentSection !== '')
+                                                    {{ $studentClass }}{{ $studentClass && $studentSection ? ', ' : '' }}{{ $studentSection }}
+                                                @else
+                                                    Admission Fee
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="px-3 py-2">Admission</td>
+                                        <td class="px-3 py-2">—</td>
+                                        <td class="px-3 py-2">{{ $item->receipt_number ?? '—' }}</td>
+                                        <td class="px-3 py-2 text-green-600 font-semibold">৳ {{ number_format($item->amount, 2) }}</td>
+                                        <td class="px-3 py-2 text-right">
+                                            <span class="text-xs text-gray-400">N/A</span>
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
@@ -350,4 +426,8 @@
             </div>
         </div>
     @endif
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </div>

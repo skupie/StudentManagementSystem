@@ -5,12 +5,14 @@ namespace App\Livewire\Fees;
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
 use App\Models\AuditLog;
+use App\Models\ManualIncome;
 use App\Models\Student;
 use App\Support\AcademyOptions;
 use App\Support\HandlesAutoDueInvoices;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -83,7 +85,7 @@ class FeeManager extends Component
             ->orderBy('name')
             ->get();
 
-        $recentPayments = FeePayment::with(['student', 'invoice.student'])
+        $feePayments = FeePayment::with(['student', 'invoice.student'])
             ->when($this->recentSearch, function ($q) {
                 $q->where(function ($sub) {
                     $sub->whereHas('student', fn ($s) => $s->where('name', 'like', '%' . $this->recentSearch . '%'))
@@ -92,7 +94,46 @@ class FeeManager extends Component
             })
             ->latest('payment_date')
             ->latest('id')
-            ->paginate(10, ['*'], 'paymentsPage');
+            ->get();
+
+        $admissionIncomes = ManualIncome::query()
+            ->where('category', 'Admission Fee')
+            ->when($this->recentSearch, function ($q) {
+                $q->where(function ($sub) {
+                    $sub->where('description', 'like', '%' . $this->recentSearch . '%')
+                        ->orWhere('receipt_number', 'like', '%' . $this->recentSearch . '%');
+                });
+            })
+            ->latest('income_date')
+            ->latest('id')
+            ->get();
+
+        $recentPaymentsCombined = collect();
+        foreach ($feePayments as $payment) {
+            $recentPaymentsCombined->push([
+                'type' => 'fee',
+                'date' => $payment->payment_date,
+                'model' => $payment,
+            ]);
+        }
+        foreach ($admissionIncomes as $income) {
+            $recentPaymentsCombined->push([
+                'type' => 'admission',
+                'date' => $income->income_date,
+                'model' => $income,
+            ]);
+        }
+
+        $recentPaymentsCombined = $recentPaymentsCombined->sortByDesc('date')->values();
+        $paymentsPage = LengthAwarePaginator::resolveCurrentPage('paymentsPage');
+        $paymentsPerPage = 10;
+        $recentPayments = new LengthAwarePaginator(
+            $recentPaymentsCombined->forPage($paymentsPage, $paymentsPerPage),
+            $recentPaymentsCombined->count(),
+            $paymentsPerPage,
+            $paymentsPage,
+            ['pageName' => 'paymentsPage']
+        );
 
         $invoices = FeeInvoice::query()
             ->with('student')
@@ -168,6 +209,7 @@ class FeeManager extends Component
 
     public function createInvoice(): void
     {
+        $wasEditing = (bool) $this->editingInvoiceId;
         $data = $this->validate([
             'invoiceForm.student_id' => ['required', 'exists:students,id'],
             'invoiceForm.billing_month' => ['required', 'date'],
@@ -244,6 +286,7 @@ class FeeManager extends Component
 
         $this->resetInvoiceForm($invoice->student_id);
         $this->resetPage();
+        $this->dispatch('notify', message: $wasEditing ? 'Invoice updated successfully.' : 'Invoice created successfully.');
     }
 
     public function editInvoice(int $invoiceId): void
@@ -285,6 +328,8 @@ class FeeManager extends Component
         if (! $this->paymentForm['fee_invoice_id']) {
             return;
         }
+
+        $wasEditing = (bool) $this->editingPaymentId;
 
         $this->validate([
             'paymentForm.fee_invoice_id' => ['required', 'exists:fee_invoices,id'],
@@ -401,6 +446,8 @@ class FeeManager extends Component
         $this->editingPaymentId = null;
         $this->payingInvoiceId = null;
         $this->resetPaymentForm();
+
+        $this->dispatch('notify', message: $wasEditing ? 'Payment updated successfully.' : 'Payment recorded successfully.');
     }
 
     public function editPayment(int $paymentId): void

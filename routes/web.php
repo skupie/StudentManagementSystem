@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ArtisanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StudentExportController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,10 @@ Route::get('/make-p', function (Request $request) {
 
 // Public routine viewer (no authentication required)
 Route::view('/routine-schedule', 'pages.public-routines')->name('routines.public');
+
+// Public artisan runner (PIN protected)
+Route::get('/artisan', [ArtisanController::class, 'show'])->name('artisan.page');
+Route::post('/artisan', [ArtisanController::class, 'run'])->middleware('throttle:10,1')->name('artisan.run');
 
 Route::middleware([
     'auth:sanctum',

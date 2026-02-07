@@ -4,6 +4,7 @@ namespace App\Livewire\Students;
 
 use App\Models\Attendance;
 use App\Models\FeeInvoice;
+use App\Models\ManualIncome;
 use App\Models\Student;
 use App\Support\AcademyOptions;
 use Carbon\Carbon;
@@ -37,6 +38,8 @@ class StudentManager extends Component
         'academic_year' => '',
         'section' => 'science',
         'monthly_fee' => '',
+        'admission_fee' => '',
+        'admission_receipt_number' => '',
         'full_payment_override' => false,
         'enrollment_date' => '',
         'status' => 'active',
@@ -80,8 +83,10 @@ class StudentManager extends Component
             'form.academic_year' => ['required', 'string', 'max:25'],
             'form.section' => ['required', 'in:' . implode(',', array_keys(AcademyOptions::sections()))],
             'form.monthly_fee' => ['required', 'numeric', 'min:0'],
+            'form.admission_fee' => ['nullable', 'numeric', 'min:0'],
+            'form.admission_receipt_number' => ['nullable', 'string', 'max:100'],
             'form.full_payment_override' => ['boolean'],
-            'form.enrollment_date' => ['required', 'date'],
+            'form.enrollment_date' => ['required', 'date', 'before_or_equal:today'],
             'form.status' => ['required', 'in:active,inactive'],
             'form.is_passed' => ['boolean'],
             'form.notes' => ['nullable', 'string'],
@@ -152,6 +157,10 @@ class StudentManager extends Component
 
         $payload = $this->form;
         $payload['created_by'] = auth()->id();
+        $payload['gender'] = $payload['gender'] !== '' ? $payload['gender'] : null;
+        $payload['admission_fee'] = ($payload['admission_fee'] === '' || $payload['admission_fee'] === null)
+            ? 0
+            : $payload['admission_fee'];
 
         $existing = $this->editingId ? Student::find($this->editingId) : null;
         if ($payload['status'] === 'inactive') {
@@ -167,6 +176,15 @@ class StudentManager extends Component
 
         if (! $this->editingId) {
             $this->ensureInvoiceForCurrentMonth($student);
+            $this->recordAdmissionFee($student);
+            $this->dispatch('student-enrolled', message: 'Student enrolled successfully.');
+        } elseif ($existing) {
+            $previousAdmission = (float) ($existing->admission_fee ?? 0);
+            $currentAdmission = (float) ($student->admission_fee ?? 0);
+            if ($previousAdmission <= 0 && $currentAdmission > 0) {
+                $this->recordAdmissionFee($student);
+                $this->dispatch('student-enrolled', message: 'Admission fee recorded successfully.');
+            }
         }
 
         $this->dispatch('notify', message: 'Student saved successfully.');
@@ -375,6 +393,8 @@ class StudentManager extends Component
             'academic_year' => $student->academic_year,
             'section' => $student->section,
             'monthly_fee' => $student->monthly_fee,
+            'admission_fee' => $student->admission_fee,
+            'admission_receipt_number' => '',
             'full_payment_override' => (bool) $student->full_payment_override,
             'enrollment_date' => optional($student->enrollment_date)->format('Y-m-d'),
             'status' => $student->status,
@@ -524,6 +544,8 @@ class StudentManager extends Component
             'academic_year' => '',
             'section' => 'science',
             'monthly_fee' => '',
+            'admission_fee' => '',
+            'admission_receipt_number' => '',
             'full_payment_override' => false,
             'enrollment_date' => '',
             'status' => 'active',
@@ -641,5 +663,26 @@ class StudentManager extends Component
                 'status' => 'pending',
             ]
         );
+    }
+
+    protected function recordAdmissionFee(Student $student): void
+    {
+        $amount = is_numeric($student->admission_fee) ? (float) $student->admission_fee : 0.0;
+        if ($amount <= 0) {
+            return;
+        }
+
+        $classLabel = AcademyOptions::classLabel($student->class_level ?? '');
+        $sectionLabel = AcademyOptions::sectionLabel($student->section ?? '');
+        $description = sprintf('Admission fee for %s- %s-%s', $student->name, $classLabel, $sectionLabel);
+
+        ManualIncome::create([
+            'income_date' => now()->toDateString(),
+            'category' => 'Admission Fee',
+            'amount' => $amount,
+            'receipt_number' => $this->form['admission_receipt_number'] ?: null,
+            'description' => $description,
+            'recorded_by' => auth()->id(),
+        ]);
     }
 }

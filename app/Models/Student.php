@@ -22,6 +22,7 @@ class Student extends Model
         'academic_year',
         'section',
         'monthly_fee',
+        'admission_fee',
         'full_payment_override',
         'enrollment_date',
         'status',
@@ -35,6 +36,7 @@ class Student extends Model
     protected $casts = [
         'enrollment_date' => 'date',
         'monthly_fee' => 'decimal:2',
+        'admission_fee' => 'decimal:2',
         'full_payment_override' => 'boolean',
         'is_passed' => 'boolean',
         'inactive_at' => 'datetime',

@@ -112,27 +112,41 @@
             <ul class="divide-y divide-gray-100">
                 @forelse ($payments as $payment)
                     <li class="py-3 flex justify-between">
-                        <div>
-                            <div class="font-semibold text-gray-900">{{ $payment->student->name }}</div>
-                            <div class="text-xs text-gray-500">
-                                {{ \App\Support\AcademyOptions::classLabel($payment->student->class_level ?? '') }}
-                                • {{ \App\Support\AcademyOptions::sectionLabel($payment->student->section ?? '') }}
-                            </div>
-                            <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }} • {{ $payment->payment_mode }}</div>
-                            <div class="text-xs text-gray-500">
-                                Receipt # {{ $payment->receipt_number ?? 'N/A' }}
-                                @if ($payment->invoice?->billing_month)
-                                    • {{ \Carbon\Carbon::parse($payment->invoice->billing_month)->format('M Y') }}
+                        @if ($payment['type'] === 'fee')
+                            @php($item = $payment['model'])
+                            <div>
+                                <div class="font-semibold text-gray-900">{{ $item->student->name }}</div>
+                                <div class="text-xs text-gray-500">
+                                    {{ \App\Support\AcademyOptions::classLabel($item->student->class_level ?? '') }}
+                                    • {{ \App\Support\AcademyOptions::sectionLabel($item->student->section ?? '') }}
+                                </div>
+                                <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($item->payment_date)->format('d M Y') }} • {{ $item->payment_mode }}</div>
+                                <div class="text-xs text-gray-500">
+                                    Receipt # {{ $item->receipt_number ?? 'N/A' }}
+                                    @if ($item->invoice?->billing_month)
+                                        • {{ \Carbon\Carbon::parse($item->invoice->billing_month)->format('M Y') }}
+                                    @endif
+                                </div>
+                                @php($ledgerScholarship = optional($item->invoice)->scholarship_amount ?? 0)
+                                @if ($ledgerScholarship > 0)
+                                    <div class="text-xs text-blue-600">
+                                        Scholarship ৳ {{ number_format($ledgerScholarship, 2) }} (Base ৳ {{ number_format(optional($item->invoice)->gross_amount ?? 0, 2) }})
+                                    </div>
                                 @endif
                             </div>
-                            @php($ledgerScholarship = optional($payment->invoice)->scholarship_amount ?? 0)
-                            @if ($ledgerScholarship > 0)
-                                <div class="text-xs text-blue-600">
-                                    Scholarship ৳ {{ number_format($ledgerScholarship, 2) }} (Base ৳ {{ number_format(optional($payment->invoice)->gross_amount ?? 0, 2) }})
-                                </div>
-                            @endif
-                        </div>
-                        <div class="font-semibold text-green-600">৳ {{ number_format($payment->amount, 2) }}</div>
+                            <div class="font-semibold text-green-600">৳ {{ number_format($item->amount, 2) }}</div>
+                        @else
+                            @php($item = $payment['model'])
+                            <div>
+                                <div class="font-semibold text-gray-900">Admission Fee</div>
+                                <div class="text-xs text-gray-500">{{ $item->description }}</div>
+                                @if (!empty($item->receipt_number))
+                                    <div class="text-xs text-gray-500">Receipt # {{ $item->receipt_number }}</div>
+                                @endif
+                                <div class="text-xs text-gray-500">{{ optional($item->income_date)->format('d M Y') }}</div>
+                            </div>
+                            <div class="font-semibold text-green-600">৳ {{ number_format($item->amount, 2) }}</div>
+                        @endif
                     </li>
                 @empty
                     <li class="py-3 text-gray-500 text-sm text-center">No payments in range.</li>
