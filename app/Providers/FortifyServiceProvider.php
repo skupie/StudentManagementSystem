@@ -34,9 +34,16 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Enforce email + password (bcrypt) authentication
+        // Allow login with either mobile number or email + password (bcrypt)
         Fortify::authenticateUsing(function ($request) {
-            $user = User::where('email', $request->email)->first();
+            $login = trim((string) $request->input('email'));
+            $mobile = preg_replace('/\s+/', '', $login);
+
+            $user = User::query()
+                ->where('email', $login)
+                ->orWhere('contact_number', $login)
+                ->orWhere('contact_number', $mobile)
+                ->first();
 
             if (! $user) {
                 return null;

@@ -75,7 +75,7 @@ class ModelTestResults extends Component
 
     public function exportXlsx()
     {
-        if (! $this->canManage()) {
+        if (! $this->canPublishResults()) {
             abort(403);
         }
 
@@ -256,7 +256,7 @@ class ModelTestResults extends Component
 
     public function publishPublic(bool $redirect = false)
     {
-        if (! $this->canManage()) {
+        if (! $this->canPublishResults()) {
             abort(403);
         }
 
@@ -267,7 +267,7 @@ class ModelTestResults extends Component
 
     public function unpublishPublic(): void
     {
-        if (! $this->canManage()) {
+        if (! $this->canPublishResults()) {
             abort(403);
         }
         $this->showUnpublishModal = true;
@@ -277,7 +277,7 @@ class ModelTestResults extends Component
 
     public function confirmPublish(): void
     {
-        if (! $this->canManage()) {
+        if (! $this->canPublishResults()) {
             abort(403);
         }
 
@@ -302,7 +302,7 @@ class ModelTestResults extends Component
 
     public function confirmUnpublish(): void
     {
-        if (! $this->canManage()) {
+        if (! $this->canPublishResults()) {
             abort(403);
         }
 
@@ -528,6 +528,11 @@ class ModelTestResults extends Component
     protected function canManage(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'director', 'instructor', 'assistant'], true);
+    }
+
+    protected function canPublishResults(): bool
+    {
+        return in_array(auth()->user()?->role, ['admin', 'director', 'assistant'], true);
     }
 
     protected function students()

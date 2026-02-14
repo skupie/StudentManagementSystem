@@ -21,6 +21,9 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = $request->user();
+        if (in_array($user?->role, ['instructor', 'lead_instructor'], true)) {
+            return redirect()->route('teacher.portal');
+        }
         $now = now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();

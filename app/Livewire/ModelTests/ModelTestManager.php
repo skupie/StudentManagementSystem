@@ -6,8 +6,10 @@ use App\Models\ModelTest;
 use App\Models\ModelTestResult;
 use App\Models\ModelTestStudent;
 use App\Models\Student;
+use App\Models\Teacher;
 use App\Support\AcademyOptions;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -75,9 +77,23 @@ class ModelTestManager extends Component
 
     public function render()
     {
+        $isTeacherRole = $this->isTeacherRole();
+        $allowedSubjects = $this->teacherAllowedSubjectKeys();
+        $sectionOptions = $this->availableSectionOptions();
+
         $students = ModelTestStudent::orderBy('name')->get();
+        if ($isTeacherRole && $this->marksSectionFilter === '' && ! empty($sectionOptions)) {
+            $this->marksSectionFilter = (string) array_key_first($sectionOptions);
+        }
         $marksSection = $this->normalizeSectionKey($this->marksSectionFilter);
+        if ($isTeacherRole && ! empty($sectionOptions) && $marksSection && ! array_key_exists($marksSection, $sectionOptions)) {
+            $marksSection = array_key_first($sectionOptions);
+            $this->marksSectionFilter = $marksSection ?? '';
+        }
         $marksStudents = ModelTestStudent::query()
+            ->when($isTeacherRole && ! empty($sectionOptions), function ($q) use ($sectionOptions) {
+                $q->whereIn('section', array_keys($sectionOptions));
+            })
             ->when($marksSection !== null && $marksSection !== '', function ($q) use ($marksSection) {
                 $q->whereRaw('LOWER(section) = ?', [strtolower($marksSection)]);
             })
@@ -88,9 +104,20 @@ class ModelTestManager extends Component
             ->when($this->existingSection !== '', fn ($q) => $q->where('section', $this->existingSection))
             ->orderBy('name')
             ->get();
-        $tests = ModelTest::orderByDesc('year')->orderBy('name')->get();
+        $tests = ModelTest::query()
+            ->when($isTeacherRole, function ($q) use ($allowedSubjects) {
+                if (empty($allowedSubjects)) {
+                    $q->whereRaw('1 = 0');
+                    return;
+                }
+
+                $q->whereIn('subject', $allowedSubjects);
+            })
+            ->orderByDesc('year')
+            ->orderBy('name')
+            ->get();
         $resolvedMarksSection = $this->currentMarksSection();
-        $subjectOptions = $this->subjectOptions($resolvedMarksSection);
+        $subjectOptions = $this->availableSubjectOptions($resolvedMarksSection);
         $this->ensureSubjectDefault($subjectOptions);
         $this->initializeCustomMax($resolvedMarksSection, $this->marksForm['test_type'], $this->marksForm['subject']);
 
@@ -98,6 +125,14 @@ class ModelTestManager extends Component
         $markType = $this->marksForm['test_type'] ?? ($selectedTest->type ?? 'full');
         $maxMarks = $this->maxMarks($resolvedMarksSection ?? 'science', $markType, $this->marksForm['subject'] ?? null);
         $results = ModelTestResult::with(['student', 'test'])
+            ->when($isTeacherRole, function ($q) use ($allowedSubjects) {
+                if (empty($allowedSubjects)) {
+                    $q->whereRaw('1 = 0');
+                    return;
+                }
+
+                $q->whereIn('subject', $allowedSubjects);
+            })
             ->when($marksSection, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('section', $marksSection)))
             ->when($this->marksForm['year'], fn ($q) => $q->where('year', $this->marksForm['year']))
             ->orderByDesc('created_at')
@@ -108,7 +143,7 @@ class ModelTestManager extends Component
             'marksStudents' => $marksStudents,
             'existingStudents' => $existingStudents,
             'tests' => $tests,
-            'sectionOptions' => $this->sectionOptions(),
+            'sectionOptions' => $sectionOptions,
             'classOptions' => $this->classOptions(),
             'subjectOptions' => $subjectOptions,
             'defaultYear' => now()->year,
@@ -116,6 +151,8 @@ class ModelTestManager extends Component
             'markType' => $markType,
             'maxMarks' => $maxMarks,
             'results' => $results,
+            'isTeacherRole' => $isTeacherRole,
+            'teacherHasAllowedSubjects' => ! empty($allowedSubjects),
         ]);
     }
 
@@ -138,9 +175,14 @@ class ModelTestManager extends Component
 
         $test = ModelTest::find($value);
         if ($test) {
-            $subjectOptions = $this->subjectOptions($this->currentMarksSection());
+            $subjectOptions = $this->availableSubjectOptions($this->currentMarksSection());
             $this->ensureSubjectDefault($subjectOptions);
-            $this->marksForm['subject'] = $test->subject ?: ($this->marksForm['subject'] ?: array_key_first($subjectOptions));
+            $testSubject = (string) ($test->subject ?? '');
+            if (! empty($subjectOptions) && array_key_exists($testSubject, $subjectOptions)) {
+                $this->marksForm['subject'] = $testSubject;
+            } else {
+                $this->marksForm['subject'] = $this->marksForm['subject'] ?: array_key_first($subjectOptions);
+            }
             $this->marksForm['test_type'] = $test->type ?: 'full';
             $this->initializeCustomMax($this->currentMarksSection(), $this->marksForm['test_type'], $this->marksForm['subject']);
         }
@@ -173,6 +215,10 @@ class ModelTestManager extends Component
 
     public function createStudent(): void
     {
+        if ($this->isTeacherRole()) {
+            abort(403, 'Teachers cannot create model test students.');
+        }
+
         $data = $this->validate([
             'studentForm.name' => ['required', 'string', 'max:255'],
             'studentForm.contact_number' => ['nullable', 'string', 'max:50'],
@@ -192,6 +238,10 @@ class ModelTestManager extends Component
 
     public function loadStudent(?int $studentId): void
     {
+        if ($this->isTeacherRole()) {
+            abort(403, 'Teachers cannot load model test students.');
+        }
+
         $student = $studentId ? ModelTestStudent::find($studentId) : null;
         if (! $student) {
             return;
@@ -210,6 +260,10 @@ class ModelTestManager extends Component
 
     public function useExistingStudent(): void
     {
+        if ($this->isTeacherRole()) {
+            abort(403, 'Teachers cannot load students from main list.');
+        }
+
         $studentId = $this->existingStudentId;
         if (! $studentId) {
             return;
@@ -259,6 +313,10 @@ class ModelTestManager extends Component
 
     public function createModelTest(): void
     {
+        if ($this->isTeacherRole()) {
+            abort(403, 'Teachers cannot create model tests.');
+        }
+
         $data = $this->validate([
             'testForm.name' => ['required', 'string', 'max:255'],
             'testForm.subject' => ['nullable', 'string', 'max:255'],
@@ -281,6 +339,27 @@ class ModelTestManager extends Component
 
     public function saveMarks(): void
     {
+        $allowedSubjects = $this->teacherAllowedSubjectKeys();
+        if ($this->isTeacherRole()) {
+            if (empty($allowedSubjects)) {
+                $this->addError('marksForm.subject', 'No subject is assigned to your teacher profile.');
+                return;
+            }
+
+            $selected = (string) ($this->marksForm['subject'] ?? '');
+            if (! in_array($selected, $allowedSubjects, true)) {
+                $this->addError('marksForm.subject', 'You can only input marks for your assigned subjects.');
+                return;
+            }
+        }
+
+        if ($this->editingResultId === null && $this->hasExistingMarksEntry()) {
+            $message = 'Marks already entered for this student, model test, year, and subject.';
+            $this->addError('marksForm.subject', $message);
+            $this->dispatch('notify', message: $message);
+            return;
+        }
+
         $validated = $this->validate($this->marksRules());
         $marks = $validated['marksForm'];
 
@@ -292,7 +371,17 @@ class ModelTestManager extends Component
             return;
         }
 
-        if ($marks['subject'] && $test->subject !== $marks['subject']) {
+        if ($this->isTeacherRole() && ! in_array((string) $student->section, array_keys($this->availableSectionOptions()), true)) {
+            $this->addError('marksForm.student_id', 'You can only input marks for students in your allowed sections.');
+            return;
+        }
+
+        if ($this->isTeacherRole() && ! in_array((string) ($marks['subject'] ?? ''), $allowedSubjects, true)) {
+            $this->addError('marksForm.subject', 'You can only input marks for your assigned subjects.');
+            return;
+        }
+
+        if (! $this->isTeacherRole() && $marks['subject'] && $test->subject !== $marks['subject']) {
             $test->update(['subject' => $marks['subject']]);
         }
         $section = $student->section;
@@ -368,7 +457,9 @@ class ModelTestManager extends Component
             }
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'mt_results_unique')) {
-                $this->addError('marksForm.subject', 'Subject already exists for this student and test.');
+                $message = 'Marks already entered for this student, model test, year, and subject.';
+                $this->addError('marksForm.subject', $message);
+                $this->dispatch('notify', message: $message);
                 return;
             }
             throw $e;
@@ -388,6 +479,9 @@ class ModelTestManager extends Component
         $result = ModelTestResult::with(['student', 'test'])->find($resultId);
         if (! $result) {
             return;
+        }
+        if ($this->isTeacherRole() && ! in_array((string) ($result->subject ?? ''), $this->teacherAllowedSubjectKeys(), true)) {
+            abort(403, 'You can only edit marks for your assigned subjects.');
         }
 
         $this->editingResultId = $result->id;
@@ -418,6 +512,9 @@ class ModelTestManager extends Component
         if (! $result) {
             return;
         }
+        if ($this->isTeacherRole() && ! in_array((string) ($result->subject ?? ''), $this->teacherAllowedSubjectKeys(), true)) {
+            abort(403, 'You can only delete marks for your assigned subjects.');
+        }
 
         $this->confirmingDeleteId = $result->id;
         $this->confirmingDeleteName = $result->student?->name ?? 'this record';
@@ -433,6 +530,13 @@ class ModelTestManager extends Component
     {
         if (! $this->confirmingDeleteId) {
             return;
+        }
+
+        if ($this->isTeacherRole()) {
+            $result = ModelTestResult::find($this->confirmingDeleteId);
+            if (! $result || ! in_array((string) ($result->subject ?? ''), $this->teacherAllowedSubjectKeys(), true)) {
+                abort(403, 'You can only delete marks for your assigned subjects.');
+            }
         }
 
         ModelTestResult::whereKey($this->confirmingDeleteId)->delete();
@@ -459,7 +563,7 @@ class ModelTestManager extends Component
             'marksForm.student_id' => ['required', 'exists:model_test_students,id'],
             'marksForm.model_test_id' => ['required', 'exists:model_tests,id'],
             'marksForm.year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'marksForm.subject' => ['required', Rule::in(array_keys($this->subjectOptions($section)))],
+            'marksForm.subject' => ['required', Rule::in(array_keys($this->availableSubjectOptions($section)))],
             'marksForm.mcq_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'marksForm.cq_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'marksForm.practical_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
@@ -526,6 +630,23 @@ class ModelTestManager extends Component
         return AcademyOptions::sections();
     }
 
+    protected function availableSectionOptions(): array
+    {
+        $sections = $this->sectionOptions();
+        if (! $this->isTeacherRole()) {
+            return $sections;
+        }
+
+        $allowed = $this->teacherAllowedSectionKeys();
+        if (empty($allowed)) {
+            return [];
+        }
+
+        return collect($sections)
+            ->filter(fn ($label, $key) => in_array((string) $key, $allowed, true))
+            ->toArray();
+    }
+
     protected function classOptions(): array
     {
         return AcademyOptions::classes();
@@ -570,8 +691,200 @@ class ModelTestManager extends Component
 
     protected function resetSubjectForSection(?string $section): void
     {
-        $options = $this->subjectOptions($section);
+        $options = $this->availableSubjectOptions($section);
         $this->ensureSubjectDefault($options);
+    }
+
+    protected function availableSubjectOptions(?string $section = null): array
+    {
+        $options = $this->subjectOptions($section);
+        if (! $this->isTeacherRole()) {
+            return $options;
+        }
+
+        $allowed = $this->teacherAllowedSubjectKeys();
+        if (empty($allowed)) {
+            return [];
+        }
+
+        return collect($options)
+            ->filter(fn ($label, $key) => in_array((string) $key, $allowed, true))
+            ->toArray();
+    }
+
+    protected function isTeacherRole(): bool
+    {
+        return in_array(auth()->user()?->role, ['instructor', 'lead_instructor'], true);
+    }
+
+    protected function resolveTeacher(): ?Teacher
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
+
+        if (Schema::hasColumn('teachers', 'user_id')) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                return $teacher;
+            }
+        }
+
+        if (! empty($user->contact_number)) {
+            $teacher = Teacher::where('contact_number', $user->contact_number)->first();
+            if ($teacher) {
+                return $teacher;
+            }
+        }
+
+        return Teacher::where('name', $user->name)->first();
+    }
+
+    protected function teacherAllowedSubjectKeys(): array
+    {
+        if (! $this->isTeacherRole()) {
+            return [];
+        }
+
+        $raw = $this->teacherAssignedValues();
+
+        if ($raw->isEmpty()) {
+            return [];
+        }
+
+        $allSubjects = AcademyOptions::subjects();
+        $labelToKey = [];
+        foreach ($allSubjects as $key => $label) {
+            $labelToKey[strtolower(trim((string) $label))] = (string) $key;
+        }
+
+        $sectionKeys = array_keys($this->sectionOptions());
+        $resolved = [];
+
+        foreach ($raw as $item) {
+            $value = strtolower(trim((string) $item));
+            if ($value === '') {
+                continue;
+            }
+
+            // Direct key match.
+            if (array_key_exists($value, $allSubjects)) {
+                $resolved[] = $value;
+                continue;
+            }
+
+            // Label match (e.g. "Physics 1st").
+            if (isset($labelToKey[$value])) {
+                $resolved[] = $labelToKey[$value];
+                continue;
+            }
+
+            // If a section key is stored, include all subjects for that section.
+            if (in_array($value, $sectionKeys, true)) {
+                $resolved = array_merge($resolved, array_keys(AcademyOptions::subjectsForSection($value)));
+                continue;
+            }
+        }
+
+        return collect($resolved)->filter()->unique()->values()->toArray();
+    }
+
+    protected function teacherAllowedSectionKeys(): array
+    {
+        if (! $this->isTeacherRole()) {
+            return array_keys($this->sectionOptions());
+        }
+
+        $allowedSections = [];
+        $rawAssigned = $this->teacherAssignedValues();
+
+        $subjects = $this->teacherAllowedSubjectKeys();
+        if (empty($subjects)) {
+            // If teacher assignment stores a section key only, handle that below.
+            $subjects = [];
+        }
+
+        $globalPrefixes = ['bangla_', 'english_'];
+        $globalExact = ['ict'];
+
+        foreach ($subjects as $subject) {
+            $normalized = strtolower(trim((string) $subject));
+            if (in_array($normalized, $globalExact, true)) {
+                return array_keys($this->sectionOptions());
+            }
+
+            foreach ($globalPrefixes as $prefix) {
+                if (str_starts_with($normalized, $prefix)) {
+                    return array_keys($this->sectionOptions());
+                }
+            }
+        }
+
+        // Support teacher assignment values saved as section keys.
+        foreach ($rawAssigned as $item) {
+            $value = strtolower(trim((string) $item));
+            if (array_key_exists($value, $this->sectionOptions())) {
+                $allowedSections[] = $value;
+            }
+        }
+
+        $sectionSubjects = config('academy.subjects.by_section', []);
+        foreach ($sectionSubjects as $sectionKey => $subjectMap) {
+            $sectionSubjectKeys = array_map('strtolower', array_keys((array) $subjectMap));
+            foreach ($subjects as $subject) {
+                if (in_array(strtolower((string) $subject), $sectionSubjectKeys, true)) {
+                    $allowedSections[] = (string) $sectionKey;
+                    break;
+                }
+            }
+        }
+
+        $allowedSections = array_values(array_unique($allowedSections));
+
+        if (empty($allowedSections)) {
+            return array_keys($this->sectionOptions());
+        }
+
+        return $allowedSections;
+    }
+
+    protected function teacherAssignedValues()
+    {
+        $teacher = $this->resolveTeacher();
+        if (! $teacher) {
+            return collect();
+        }
+
+        $raw = collect($teacher->subjects ?? [])
+            ->filter()
+            ->map(fn ($subject) => (string) $subject)
+            ->values();
+
+        if ($raw->isEmpty() && ! empty($teacher->subject)) {
+            $raw->push((string) $teacher->subject);
+        }
+
+        return $raw;
+    }
+
+    protected function hasExistingMarksEntry(): bool
+    {
+        $studentId = $this->marksForm['student_id'] ?? null;
+        $testId = $this->marksForm['model_test_id'] ?? null;
+        $year = $this->marksForm['year'] ?? null;
+        $subject = $this->marksForm['subject'] ?? null;
+
+        if (! $studentId || ! $testId || ! $year || ! $subject) {
+            return false;
+        }
+
+        return ModelTestResult::query()
+            ->where('model_test_student_id', $studentId)
+            ->where('model_test_id', $testId)
+            ->where('year', (int) $year)
+            ->where('subject', (string) $subject)
+            ->exists();
     }
 
     protected function normalizeSectionKey(?string $section): ?string

@@ -20,6 +20,7 @@ class Teacher extends Model
         'note',
         'created_by',
         'available_days',
+        'user_id',
     ];
 
     protected $casts = [
@@ -32,5 +33,15 @@ class Teacher extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function loginUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function weeklyExamAssignments()
+    {
+        return $this->hasMany(WeeklyExamAssignment::class);
     }
 }

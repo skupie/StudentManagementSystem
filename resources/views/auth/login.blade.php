@@ -60,6 +60,9 @@
             <h1 class="text-3xl font-extrabold text-gray-900">
                 Welcome to Basic Academy
             </h1>
+            <p class="text-sm text-gray-500">
+                Teacher? <a href="{{ route('teacher.login') }}" class="text-primary-blue font-semibold hover:underline">Use Teacher Login</a>
+            </p>
             <p class="text-lg font-semibold text-dark-accent">
                 Only For HSC
             </p>
@@ -70,16 +73,16 @@
             
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
+                    Mobile Number or Email
                 </label>
                 <input
-                    type="email"
+                    type="text"
                     id="email"
                     name="email"
                     value="{{ old('email') }}"
                     required
                     autofocus
-                    placeholder="you@basicacademy.edu"
+                    placeholder="01XXXXXXXXX or you@basicacademy.edu"
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-primary-blue transition duration-150 ease-in-out"
                 >
             </div>

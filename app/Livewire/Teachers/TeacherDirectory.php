@@ -3,8 +3,11 @@
 namespace App\Livewire\Teachers;
 
 use App\Models\Teacher;
+use App\Models\User;
 use App\Support\AcademyOptions;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -27,6 +30,8 @@ class TeacherDirectory extends Component
         'is_active' => true,
         'note' => '',
         'available_days' => [],
+        'password' => '',
+        'password_confirmation' => '',
     ];
 
     public function render()
@@ -35,6 +40,7 @@ class TeacherDirectory extends Component
         $subjectOptions = $this->subjectOptions();
 
         $teachers = Teacher::query()
+            ->with('loginUser')
             ->when($this->statusFilter !== 'all', function ($query) {
                 $query->where('is_active', $this->statusFilter === 'active');
             })
@@ -67,12 +73,18 @@ class TeacherDirectory extends Component
             'form.subjects' => ['array'],
             'form.subjects.*' => ['string'],
             'form.payment' => ['nullable', 'numeric', 'min:0'],
-            'form.contact_number' => ['nullable', 'string', 'max:50'],
+            'form.contact_number' => ['nullable', 'string', 'max:50', 'required_with:form.password', 'unique:teachers,contact_number,' . $this->editingId],
             'form.is_active' => ['required', 'boolean'],
             'form.note' => ['nullable', 'string'],
             'form.available_days' => ['array'],
             'form.available_days.*' => ['in:Saturday,Sunday,Monday,Tuesday,Wednesday,Thursday'],
+            'form.password' => ['nullable', 'confirmed', Password::min(6)],
         ])['form'];
+        $currentTeacher = $this->editingId ? Teacher::with('loginUser')->find($this->editingId) : null;
+
+        if (! $this->validateLoginSyncInput($data, $currentTeacher)) {
+            return;
+        }
 
         $subjects = array_values(array_filter($data['subjects'] ?? []));
         $primarySubject = $subjects[0] ?? ($data['subject'] ?? null);
@@ -88,8 +100,9 @@ class TeacherDirectory extends Component
                 'note' => $data['note'],
                 'available_days' => array_values($data['available_days'] ?? []),
             ]);
+            $teacher = Teacher::findOrFail($this->editingId);
         } else {
-            Teacher::create([
+            $teacher = Teacher::create([
                 'name' => $data['name'],
                 'subject' => $primarySubject,
                 'subjects' => $subjects,
@@ -102,6 +115,10 @@ class TeacherDirectory extends Component
             ]);
         }
 
+        if (! $this->syncTeacherLogin($teacher, $data)) {
+            return;
+        }
+
         $this->resetForm();
         $this->resetPage();
         $this->dispatch('notify', message: 'Teacher saved.');
@@ -109,7 +126,7 @@ class TeacherDirectory extends Component
 
     protected function canManage(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'instructor'], true);
+        return in_array(auth()->user()?->role, ['admin', 'director', 'instructor', 'lead_instructor'], true);
     }
 
     public function resetForm(): void
@@ -124,6 +141,8 @@ class TeacherDirectory extends Component
             'is_active' => true,
             'note' => '',
             'available_days' => [],
+            'password' => '',
+            'password_confirmation' => '',
         ];
     }
 
@@ -274,7 +293,102 @@ class TeacherDirectory extends Component
             'is_active' => (bool) $teacher->is_active,
             'note' => $teacher->note ?? '',
             'available_days' => $teacher->available_days ?? [],
+            'password' => '',
+            'password_confirmation' => '',
         ];
+    }
+
+    protected function syncTeacherLogin(Teacher $teacher, array $data): bool
+    {
+        $mobile = trim((string) ($data['contact_number'] ?? ''));
+        $password = (string) ($data['password'] ?? '');
+        $linkedUser = $teacher->loginUser;
+        $needsAccountSync = $linkedUser !== null || $password !== '';
+
+        if (! $needsAccountSync) {
+            return true;
+        }
+
+        if ($mobile === '') {
+            $this->addError('form.contact_number', 'Contact number is required for teacher login.');
+            return false;
+        }
+
+        if (! $linkedUser) {
+            $linkedUser = User::create([
+                'name' => $teacher->name,
+                'email' => $this->generateTeacherEmail($teacher->id),
+                'role' => 'instructor',
+                'subject' => $teacher->subject,
+                'payment' => $teacher->payment,
+                'contact_number' => $mobile,
+                'is_active' => (bool) $teacher->is_active,
+                'password' => Hash::make($password),
+            ]);
+
+            $teacher->user_id = $linkedUser->id;
+            $teacher->save();
+            return true;
+        }
+
+        $updates = [
+            'name' => $teacher->name,
+            'subject' => $teacher->subject,
+            'payment' => $teacher->payment,
+            'contact_number' => $mobile,
+            'is_active' => (bool) $teacher->is_active,
+        ];
+        if ($password !== '') {
+            $updates['password'] = Hash::make($password);
+        }
+
+        $linkedUser->update($updates);
+
+        return true;
+    }
+
+    protected function validateLoginSyncInput(array $data, ?Teacher $teacher): bool
+    {
+        $mobile = trim((string) ($data['contact_number'] ?? ''));
+        $password = (string) ($data['password'] ?? '');
+        $hasExistingLogin = (bool) ($teacher?->user_id);
+        $needsAccountSync = $hasExistingLogin || $password !== '';
+
+        if (! $needsAccountSync) {
+            return true;
+        }
+
+        if ($mobile === '') {
+            $this->addError('form.contact_number', 'Contact number is required for teacher login.');
+            return false;
+        }
+
+        $existingUserId = $teacher?->loginUser?->id;
+        $mobileConflict = User::query()
+            ->where('contact_number', $mobile)
+            ->when($existingUserId, fn ($q) => $q->where('id', '!=', $existingUserId))
+            ->exists();
+        if ($mobileConflict) {
+            $this->addError('form.contact_number', 'This mobile number is already used by another user account.');
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function generateTeacherEmail(int $teacherId): string
+    {
+        $base = 'teacher' . $teacherId . '@basicacademy.local';
+        if (! User::where('email', $base)->exists()) {
+            return $base;
+        }
+
+        $suffix = 1;
+        while (User::where('email', 'teacher' . $teacherId . '+' . $suffix . '@basicacademy.local')->exists()) {
+            $suffix++;
+        }
+
+        return 'teacher' . $teacherId . '+' . $suffix . '@basicacademy.local';
     }
 
     protected function subjectOptions(): array

@@ -1,6 +1,7 @@
 <div class="space-y-6">
-    <div class="grid md:grid-cols-2 gap-4">
-        <div class="bg-white shadow rounded-lg p-4 space-y-3">
+    @if (! $isTeacherRole)
+        <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-white shadow rounded-lg p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-gray-800">Model Test Student</h3>
                 <p class="text-xs text-gray-500">Stores separately from regular students.</p>
@@ -86,9 +87,9 @@
                     Save Student
                 </x-primary-button>
             </div>
-        </div>
+            </div>
 
-        <div class="bg-white shadow rounded-lg p-4 space-y-3">
+            <div class="bg-white shadow rounded-lg p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-gray-800">Model Test</h3>
                 <p class="text-xs text-gray-500">Name + type + subject per year.</p>
@@ -121,8 +122,9 @@
                     Save Model Test
                 </x-primary-button>
             </div>
+            </div>
         </div>
-    </div>
+    @endif
 
     @php
         $selectedStudent = $marksStudents->firstWhere('id', $marksForm['student_id']);
@@ -167,11 +169,16 @@
             <h3 class="font-semibold text-gray-800">Marks Input</h3>
             <p class="text-xs text-gray-500">HSC Batch defaults to {{ $defaultYear }} for entry and viewing.</p>
         </div>
+        @if ($isTeacherRole && ! $teacherHasAllowedSubjects)
+            <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                No subject is assigned to your teacher profile. Contact admin to assign subject before entering marks.
+            </div>
+        @endif
 
         <div class="grid md:grid-cols-3 gap-3">
             <div>
                 <x-input-label value="Model Test" />
-                <select wire:model="marksForm.model_test_id" class="mt-1 block w-full rounded-md border-gray-300">
+                <select wire:model.live="marksForm.model_test_id" class="mt-1 block w-full rounded-md border-gray-300">
                     <option value="">Select test</option>
                     @foreach ($tests as $test)
                         <option value="{{ $test->id }}">{{ $test->name }} ({{ ucfirst($test->type) }}, Batch {{ $test->year }})</option>
@@ -182,7 +189,9 @@
             <div>
                 <x-input-label value="Section" />
                 <select wire:model.live="marksSectionFilter" class="mt-1 block w-full rounded-md border-gray-300">
-                    <option value="">All Sections</option>
+                    @if (! $isTeacherRole)
+                        <option value="">All Sections</option>
+                    @endif
                     @foreach ($sectionOptions as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
@@ -271,9 +280,15 @@
         </div>
 
         <div class="text-right">
-            <x-primary-button type="button" wire:click="saveMarks">
-                Save Marks
-            </x-primary-button>
+            @if ($isTeacherRole && ! $teacherHasAllowedSubjects)
+                <x-primary-button type="button" disabled>
+                    Save Marks
+                </x-primary-button>
+            @else
+                <x-primary-button type="button" wire:click="saveMarks">
+                    Save Marks
+                </x-primary-button>
+            @endif
         </div>
     </div>
 

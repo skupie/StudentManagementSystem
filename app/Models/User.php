@@ -99,4 +99,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(ManagementEntry::class);
     }
+
+    public function teacherNotes()
+    {
+        return $this->hasMany(TeacherNote::class, 'uploaded_by');
+    }
 }

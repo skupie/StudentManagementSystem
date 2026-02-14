@@ -14,13 +14,46 @@
                 {{-- Desktop nav --}}
                 <div class="hidden sm:flex sm:items-center sm:ms-8 gap-4">
 
-                    {{-- Common --}}
-                    <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
+                    @if (in_array($navRole, ['instructor', 'lead_instructor']))
+                        <x-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
+                            {{ __('Teacher Portal') }}
+                        </x-nav-link>
 
-                    {{-- Assistant menu --}}
-                    @if ($navRole === 'assistant')
+                        <x-nav-link href="{{ route('class.notes.index') }}" :active="request()->routeIs('class.notes.*')">
+                            {{ __('Lecture Notes') }}
+                        </x-nav-link>
+
+                        <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*') || request()->routeIs('weekly-exam-syllabus.*')">
+                            <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                                {{ __('Exams') }}
+                            </div>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('weekly-exams.index') }}">
+                                {{ __('Weekly Exams') }}
+                            </a>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('weekly-exam-syllabus.index') }}">
+                                {{ __('Weekly Exam - Syllabus') }}
+                            </a>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('model-tests.index') }}">
+                                {{ __('Model Test') }}
+                            </a>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('model-tests.results') }}">
+                                {{ __('Model Test Result') }}
+                            </a>
+                        </x-nav-dropdown>
+
+                        <x-nav-link href="{{ route('routines.index') }}" :active="request()->routeIs('routines.*')">
+                            {{ __('Routines') }}
+                        </x-nav-link>
+                    @elseif ($navRole === 'assistant')
+                        {{-- Common --}}
+                        <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+
                         <x-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.*')">
                             {{ __('Attendance') }}
                         </x-nav-link>
@@ -29,7 +62,7 @@
                             {{ __('Absence Notes') }}
                         </x-nav-link>
 
-                    <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*')">
+                    <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*') || request()->routeIs('weekly-exam-syllabus.*')">
                         <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                             {{ __('Exams') }}
                         </div>
@@ -44,6 +77,14 @@
                         <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                            href="{{ route('model-tests.results') }}">
                             {{ __('Model Test Result') }}
+                        </a>
+                        <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                           href="{{ route('weekly-exam-syllabus.index') }}">
+                            {{ __('Weekly Exam - Syllabus') }}
+                        </a>
+                        <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                           href="{{ route('weekly-exam-assignments.index') }}">
+                            {{ __('Weekly Exam Assignments') }}
                         </a>
                     </x-nav-dropdown>
 
@@ -63,6 +104,11 @@
                         </x-nav-link>
 
                     @else
+                        {{-- Common --}}
+                        <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+
                         {{-- Students dropdown --}}
                         <x-nav-dropdown label="Students" :active="request()->routeIs('students.*') || request()->routeIs('attendance.*') || request()->routeIs('notes.*')">
                             <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -147,7 +193,7 @@
                         @endif
 
                         {{-- Exams --}}
-                        <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*')">
+                        <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*') || request()->routeIs('weekly-exam-syllabus.*')">
                             <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                                 {{ __('Exams') }}
                             </div>
@@ -163,6 +209,16 @@
                                href="{{ route('model-tests.results') }}">
                                 {{ __('Model Test Result') }}
                             </a>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('weekly-exam-syllabus.index') }}">
+                                {{ __('Weekly Exam - Syllabus') }}
+                            </a>
+                            @if (in_array($navRole, ['admin', 'director']))
+                                <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                   href="{{ route('weekly-exam-assignments.index') }}">
+                                    {{ __('Weekly Exam Assignments') }}
+                                </a>
+                            @endif
                         </x-nav-dropdown>
 
                         {{-- Admin-only --}}
@@ -333,6 +389,30 @@
     {{-- Mobile menu --}}
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-t border-gray-100">
         <div class="pt-2 pb-3 space-y-1 px-4">
+            @if (in_array($navRole, ['instructor', 'lead_instructor']))
+                <x-responsive-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
+                    {{ __('Teacher Portal') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('class.notes.index') }}" :active="request()->routeIs('class.notes.*')">
+                    {{ __('Lecture Notes') }}
+                </x-responsive-nav-link>
+                <div class="pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ __('Exams') }}</div>
+                <x-responsive-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.*')">
+                    {{ __('Weekly Exams') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('model-tests.index') }}" :active="request()->routeIs('model-tests.index')">
+                    {{ __('Model Test') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('model-tests.results') }}" :active="request()->routeIs('model-tests.results')">
+                    {{ __('Model Test Result') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('weekly-exam-syllabus.index') }}" :active="request()->routeIs('weekly-exam-syllabus.*')">
+                    {{ __('Weekly Exam - Syllabus') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('routines.index') }}" :active="request()->routeIs('routines.*')">
+                    {{ __('Routines') }}
+                </x-responsive-nav-link>
+            @else
             <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
@@ -396,6 +476,14 @@
             <x-responsive-nav-link href="{{ route('model-tests.results') }}" :active="request()->routeIs('model-tests.results')">
                 {{ __('Model Test Result') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link href="{{ route('weekly-exam-syllabus.index') }}" :active="request()->routeIs('weekly-exam-syllabus.*')">
+                {{ __('Weekly Exam - Syllabus') }}
+            </x-responsive-nav-link>
+            @if (in_array($navRole, ['admin', 'director', 'assistant']))
+                <x-responsive-nav-link href="{{ route('weekly-exam-assignments.index') }}" :active="request()->routeIs('weekly-exam-assignments.*')">
+                    {{ __('Weekly Exam Assignments') }}
+                </x-responsive-nav-link>
+            @endif
 
             @if ($navRole === 'admin')
                 <x-responsive-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.*')">
@@ -431,6 +519,7 @@
             <x-responsive-nav-link href="{{ route('routines.index') }}" :active="request()->routeIs('routines.*')">
                 {{ __('Routines') }}
             </x-responsive-nav-link>
+            @endif
         </div>
 
         <div class="pt-4 pb-3 border-t border-gray-100 px-4">

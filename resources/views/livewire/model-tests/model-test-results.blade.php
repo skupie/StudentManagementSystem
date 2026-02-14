@@ -1,4 +1,7 @@
 <div class="space-y-6">
+    @php
+        $canPublishResults = in_array(auth()->user()?->role, ['admin', 'director', 'assistant'], true);
+    @endphp
     <div class="bg-white shadow rounded-lg p-4 space-y-3">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
             <div>
@@ -56,20 +59,24 @@
                     </select>
                 </div>
                 <div class="flex gap-2 md:self-end">
-                    <x-secondary-button type="button" wire:click="exportXlsx">
-                        Export Report Card
-                    </x-secondary-button>
-                    <button type="button"
-                        wire:click="publishPublic(true)"
-                        wire:loading.attr="disabled"
-                        class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white text-sm font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
-                        Publish
-                    </button>
-                    <button type="button"
-                        wire:click="unpublishPublic"
-                        class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white text-sm font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
-                        Unpublish
-                    </button>
+                    @if ($canPublishResults)
+                        <x-secondary-button type="button" wire:click="exportXlsx">
+                            Export Report Card
+                        </x-secondary-button>
+                    @endif
+                    @if ($canPublishResults)
+                        <button type="button"
+                            wire:click="publishPublic(true)"
+                            wire:loading.attr="disabled"
+                            class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white text-sm font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
+                            Publish
+                        </button>
+                        <button type="button"
+                            wire:click="unpublishPublic"
+                            class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white text-sm font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
+                            Unpublish
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -161,7 +168,7 @@
         @endif
     </div>
 
-    @if ($showPublishModal)
+    @if ($canPublishResults && $showPublishModal)
         <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
                 <div class="flex items-start justify-between">
@@ -191,7 +198,7 @@
         </div>
     @endif
 
-    @if ($showUnpublishModal)
+    @if ($canPublishResults && $showUnpublishModal)
         <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
                 <div class="flex items-start justify-between">

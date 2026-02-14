@@ -76,9 +76,19 @@
                     <x-input-error :messages="$errors->get('form.payment')" class="mt-1" />
                 </div>
                 <div>
-                    <x-input-label value="Contact Number" />
+                    <x-input-label value="Mobile Number (Login ID)" />
                     <x-text-input type="text" wire:model.defer="form.contact_number" class="mt-1 block w-full" />
                     <x-input-error :messages="$errors->get('form.contact_number')" class="mt-1" />
+                </div>
+                <div>
+                    <x-input-label value="Login Password" />
+                    <x-text-input type="password" wire:model.defer="form.password" class="mt-1 block w-full" />
+                    <p class="text-xs text-gray-500 mt-1">Optional on edit. Set to create/update teacher login.</p>
+                    <x-input-error :messages="$errors->get('form.password')" class="mt-1" />
+                </div>
+                <div>
+                    <x-input-label value="Confirm Password" />
+                    <x-text-input type="password" wire:model.defer="form.password_confirmation" class="mt-1 block w-full" />
                 </div>
                 <div>
                     <x-input-label value="Available Days (manual)" />
@@ -164,6 +174,9 @@
                                 <a href="tel:{{ $teacher->contact_number }}" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50">
                                     {{ __('Call') }}
                                 </a>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs {{ $teacher->loginUser ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
+                                    {{ $teacher->loginUser ? 'Login Enabled' : 'No Login' }}
+                                </span>
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
@@ -197,3 +210,4 @@
         </div>
     </div>
 </div>
+

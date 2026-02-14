@@ -1,6 +1,11 @@
 <div class="space-y-6">
     <div class="bg-white shadow rounded-lg p-4 space-y-4">
         <h3 class="font-semibold text-gray-800">{{ $editingId ? 'Update Weekly Mark' : 'Add Weekly Mark' }}</h3>
+        @if (($isTeacherRole ?? false) && ! ($teacherHasAllowedSubjects ?? true))
+            <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                No subject is assigned to your teacher profile. Contact admin to assign subject before entering weekly marks.
+            </div>
+        @endif
         <div class="grid md:grid-cols-5 gap-3">
             <div>
                 <x-input-label value="Class" />
@@ -38,9 +43,13 @@
             <div>
                 <x-input-label value="Subject" />
                 <select wire:model.defer="form.subject" class="mt-1 block w-full rounded-md border-gray-300">
-                    @foreach ($subjectList as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
+                    @if (empty($subjectList))
+                        <option value="">No subject available</option>
+                    @else
+                        @foreach ($subjectList as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    @endif
                 </select>
                 <x-input-error :messages="$errors->get('form.subject')" class="mt-1" />
             </div>
@@ -65,9 +74,15 @@
             @if ($editingId)
                 <x-secondary-button type="button" wire:click="resetForm">Cancel</x-secondary-button>
             @endif
-            <x-primary-button type="button" wire:click="save">
-                {{ $editingId ? 'Update' : 'Save' }}
-            </x-primary-button>
+            @if (($isTeacherRole ?? false) && ! ($teacherHasAllowedSubjects ?? true))
+                <x-primary-button type="button" disabled>
+                    {{ $editingId ? 'Update' : 'Save' }}
+                </x-primary-button>
+            @else
+                <x-primary-button type="button" wire:click="save">
+                    {{ $editingId ? 'Update' : 'Save' }}
+                </x-primary-button>
+            @endif
         </div>
     </div>
 
