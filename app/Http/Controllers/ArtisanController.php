@@ -103,6 +103,7 @@ class ArtisanController extends Controller
             'config:clear' => 'php artisan config:clear',
             'view:clear' => 'php artisan view:clear',
             'route:clear' => 'php artisan route:clear',
+            'storage:link' => 'php artisan storage:link',
         ];
     }
 
