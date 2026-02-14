@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 Route::redirect('/', '/login');
 
 // Public published model test results (no auth required)
-Route::view('/public/model-test-results', 'pages.public-model-test-results')->name('model-tests.publish.public');
+Route::view('/result', 'pages.public-model-test-results')->name('model-tests.publish.public');
 
 // Public bcrypt helper (no auth required)
 Route::get('/make-p', function (Request $request) {

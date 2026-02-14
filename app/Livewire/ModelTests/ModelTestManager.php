@@ -220,7 +220,7 @@ class ModelTestManager extends Component
             return;
         }
 
-        $year = (int) ($base->academic_year ?? now()->year);
+        $year = $this->hscBatchFromSession($base->academic_year) ?? (int) now()->year;
         $section = $base->section ?: ($this->existingSection ?: array_key_first($this->sectionOptions()) ?? 'science');
         $contact = $base->phone_number ?? '';
 
@@ -237,6 +237,24 @@ class ModelTestManager extends Component
         $this->initializeCustomMax($section, $this->marksForm['test_type'], $this->marksForm['subject'], true);
 
         $this->dispatch('notify', message: 'Student info loaded. Click "Save Student" to add to Model Test list.');
+    }
+
+    protected function hscBatchFromSession(?string $session): ?int
+    {
+        if (! $session) {
+            return null;
+        }
+
+        $session = trim($session);
+        if (preg_match('/(\d{4})\s*-\s*(\d{4})/', $session, $matches)) {
+            return (int) $matches[2] + 1;
+        }
+
+        if (preg_match('/(\d{4})/', $session, $matches)) {
+            return (int) $matches[1] + 2;
+        }
+
+        return null;
     }
 
     public function createModelTest(): void
@@ -290,14 +308,20 @@ class ModelTestManager extends Component
             : null;
 
         $total = ($mcq ?? 0) + ($cq ?? 0) + ($practical ?? 0);
-        $gradeData = $this->gradeFromComponents(
-            $mcq,
-            $cq,
-            $practical,
-            (float) ($max['mcq'] ?? 0),
-            (float) ($max['cq'] ?? 0),
-            (float) ($max['practical'] ?? 0)
-        );
+        $totalMax = (float) ($max['mcq'] ?? 0) + (float) ($max['cq'] ?? 0) + (float) ($max['practical'] ?? 0);
+        if ($type === 'mcq' && $totalMax > 0 && $totalMax < 100) {
+            $percent = ($total / $totalMax) * 100;
+            $gradeData = ModelTestResult::gradeForScore($percent);
+        } else {
+            $gradeData = $this->gradeFromComponents(
+                $mcq,
+                $cq,
+                $practical,
+                (float) ($max['mcq'] ?? 0),
+                (float) ($max['cq'] ?? 0),
+                (float) ($max['practical'] ?? 0)
+            );
+        }
 
         try {
             if ($this->editingResultId) {

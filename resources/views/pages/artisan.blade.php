@@ -7,15 +7,15 @@
             </p>
         </div>
 
-        @if (session('artisan_error'))
+        @if (($artisan_error ?? session('artisan_error')))
             <div class="rounded-md bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm">
-                {{ session('artisan_error') }}
+                {{ $artisan_error ?? session('artisan_error') }}
             </div>
         @endif
 
-        @if (session('artisan_status'))
+        @if (($artisan_status ?? session('artisan_status')))
             <div class="rounded-md bg-green-50 border border-green-200 text-green-800 px-4 py-3 text-sm">
-                {{ session('artisan_status') }}
+                {{ $artisan_status ?? session('artisan_status') }}
             </div>
         @endif
 
@@ -34,7 +34,7 @@
                 <select name="command" class="mt-1 block w-full rounded-md border-gray-300" required>
                     <option value="">Select a command</option>
                     @foreach ($commands as $value => $label)
-                        <option value="{{ $value }}" @selected(old('command') === $value)>{{ $label }}</option>
+                        <option value="{{ $value }}" @selected(($selected_command ?? old('command')) === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
                 @error('command')
@@ -49,11 +49,17 @@
             </div>
         </form>
 
-        @if (session('artisan_output'))
+        @if (($artisan_output ?? session('artisan_output')))
             <div class="rounded-md border border-gray-200 bg-white p-4">
                 <div class="text-sm font-semibold text-gray-800 mb-2">Output</div>
-                <pre class="text-xs text-gray-700 whitespace-pre-wrap">{{ session('artisan_output') }}</pre>
+                <pre class="text-xs text-gray-700 whitespace-pre-wrap">{{ $artisan_output ?? session('artisan_output') }}</pre>
             </div>
+        @endif
+
+        @if (request()->filled('result'))
+            <script>
+                window.history.replaceState({}, document.title, '/artisan');
+            </script>
         @endif
     </div>
 </x-guest-layout>

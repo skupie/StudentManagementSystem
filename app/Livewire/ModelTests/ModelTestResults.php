@@ -26,13 +26,19 @@ class ModelTestResults extends Component
     public string $sectionFilter = 'all';
     public string $subjectFilter = 'all';
     public bool $isPublished = false;
+    public bool $showPublishModal = false;
+    public bool $showUnpublishModal = false;
+    public string $publishYear = '';
+    public string $publishExam = '';
+    public string $unpublishYear = '';
+    public string $unpublishExam = '';
 
     protected $paginationTheme = 'tailwind';
 
     public function mount(): void
     {
         $this->year = (string) now()->year;
-        $this->isPublished = Cache::get('model_tests_published', false);
+        $this->isPublished = ! empty(Cache::get('model_tests_published_list', []));
     }
 
     public function updating($field): void
@@ -59,6 +65,7 @@ class ModelTestResults extends Component
             'subjectOptions' => $this->subjectOptions(),
             'sectionOptions' => $this->sectionOptions(),
             'examOptions' => $this->examOptions(),
+            'yearOptions' => $this->yearOptions(),
             'students' => $this->students(),
             'selectedStudent' => $selectedStudent,
             'finalGrade' => $final['grade'],
@@ -130,8 +137,17 @@ class ModelTestResults extends Component
                 $count = $rows->count();
                 $totalSum = $rows->sum('total_mark');
                 $totalAvg = $count > 0 ? $totalSum / $count : 0;
+                $totalMax = $rows->sum(function ($row) {
+                    return (float) ($row->mcq_max ?? 0) + (float) ($row->cq_max ?? 0) + (float) ($row->practical_max ?? 0);
+                });
+                $isMcqOnly = $rows->every(fn ($r) => ($r->test?->type ?? 'full') === 'mcq');
 
-                $gradeData = ModelTestResult::gradeForScore($totalAvg);
+                if ($isMcqOnly && $totalMax > 0 && $totalMax < 100) {
+                    $percent = ($totalSum / $totalMax) * 100;
+                    $gradeData = ModelTestResult::gradeForScore($percent);
+                } else {
+                    $gradeData = ModelTestResult::gradeForScore($totalAvg);
+                }
                 $grade = $gradeData['grade'];
                 $pointValue = $gradeData['point'];
 
@@ -244,11 +260,9 @@ class ModelTestResults extends Component
             abort(403);
         }
 
-        Cache::forever('model_tests_published', true);
-        $this->isPublished = true;
-        if ($redirect) {
-            return redirect()->route('model-tests.publish.public');
-        }
+        $this->showPublishModal = true;
+        $this->publishYear = $this->year ?: (string) now()->year;
+        $this->publishExam = '';
     }
 
     public function unpublishPublic(): void
@@ -256,9 +270,57 @@ class ModelTestResults extends Component
         if (! $this->canManage()) {
             abort(403);
         }
+        $this->showUnpublishModal = true;
+        $this->unpublishYear = $this->year ?: (string) now()->year;
+        $this->unpublishExam = '';
+    }
 
-        Cache::forget('model_tests_published');
-        $this->isPublished = false;
+    public function confirmPublish(): void
+    {
+        if (! $this->canManage()) {
+            abort(403);
+        }
+
+        $this->validate([
+            'publishYear' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'publishExam' => ['required', 'exists:model_tests,id'],
+        ]);
+
+        $list = Cache::get('model_tests_published_list', []);
+        $entry = ['exam_id' => (int) $this->publishExam, 'year' => (int) $this->publishYear];
+        $list = collect($list)
+            ->reject(fn ($item) => (int) $item['exam_id'] === $entry['exam_id'] && (int) $item['year'] === $entry['year'])
+            ->push($entry)
+            ->values()
+            ->toArray();
+
+        Cache::forever('model_tests_published_list', $list);
+        $this->isPublished = true;
+        $this->showPublishModal = false;
+        $this->publishExam = '';
+    }
+
+    public function confirmUnpublish(): void
+    {
+        if (! $this->canManage()) {
+            abort(403);
+        }
+
+        $this->validate([
+            'unpublishYear' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'unpublishExam' => ['required', 'exists:model_tests,id'],
+        ]);
+
+        $list = Cache::get('model_tests_published_list', []);
+        $list = collect($list)
+            ->reject(fn ($item) => (int) $item['exam_id'] === (int) $this->unpublishExam && (int) $item['year'] === (int) $this->unpublishYear)
+            ->values()
+            ->toArray();
+
+        Cache::forever('model_tests_published_list', $list);
+        $this->isPublished = ! empty($list);
+        $this->showUnpublishModal = false;
+        $this->unpublishExam = '';
     }
 
     protected function baseQuery()
@@ -267,7 +329,7 @@ class ModelTestResults extends Component
             ->with(['student', 'test'])
             ->when($this->year !== '', fn ($q) => $q->where('year', $this->year))
             ->when($this->examFilter !== 'all', fn ($q) => $q->where('model_test_id', $this->examFilter))
-            ->when($this->studentFilter !== '', fn ($q) => $q->where('model_test_student_id', $this->studentFilter), fn ($q) => $q->whereRaw('1=0'))
+            ->when($this->studentFilter !== '', fn ($q) => $q->where('model_test_student_id', $this->studentFilter))
             ->when($this->subjectFilter !== 'all', function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('subject', $this->subjectFilter)
@@ -323,7 +385,17 @@ class ModelTestResults extends Component
             $totalSum = collect($rows)->sum('total_mark');
             $count = count($rows);
             $avgTotal = $count > 0 ? $totalSum / $count : 0;
-            $gradeData = ModelTestResult::gradeForScore($avgTotal);
+            $totalMax = collect($rows)->sum(function ($row) {
+                return (float) ($row->mcq_max ?? 0) + (float) ($row->cq_max ?? 0) + (float) ($row->practical_max ?? 0);
+            });
+            $isMcqOnly = collect($rows)->every(fn ($r) => ($r->test?->type ?? 'full') === 'mcq');
+
+            if ($isMcqOnly && $totalMax > 0 && $totalMax < 100) {
+                $percent = ($totalSum / $totalMax) * 100;
+                $gradeData = ModelTestResult::gradeForScore($percent);
+            } else {
+                $gradeData = ModelTestResult::gradeForScore($avgTotal);
+            }
             $grade = $gradeData['grade'];
             $pointValue = $gradeData['point'];
 
@@ -413,6 +485,17 @@ class ModelTestResults extends Component
         return ModelTest::orderBy('name')->get(['id', 'name']);
     }
 
+    protected function yearOptions()
+    {
+        return ModelTestResult::query()
+            ->select('year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->map(fn ($year) => (string) $year)
+            ->toArray();
+    }
+
     protected function normalizeSubjectKey(?string $subject): string
     {
         if (! $subject) {
@@ -433,8 +516,13 @@ class ModelTestResults extends Component
         }
 
         $options = $this->subjectOptions();
+        $normalized = $this->normalizeSubjectKey($key);
 
-        return $options[$key] ?? $key;
+        if (isset($options[$normalized])) {
+            return $options[$normalized];
+        }
+
+        return $normalized !== '' ? ucfirst($normalized) : $key;
     }
 
     protected function canManage(): bool
