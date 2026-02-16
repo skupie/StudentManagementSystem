@@ -24,6 +24,9 @@ class DashboardController extends Controller
         if (in_array($user?->role, ['instructor', 'lead_instructor'], true)) {
             return redirect()->route('teacher.portal');
         }
+        if ($user?->role === 'student') {
+            return redirect()->route('student.portal');
+        }
         $now = now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();

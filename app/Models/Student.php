@@ -31,6 +31,7 @@ class Student extends Model
         'passed_year',
         'notes',
         'created_by',
+        'user_id',
     ];
 
     protected $casts = [
@@ -45,6 +46,11 @@ class Student extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function loginUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function attendances(): HasMany

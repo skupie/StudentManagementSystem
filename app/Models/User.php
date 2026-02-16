@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->role === 'assistant';
     }
 
+    public function isStudent(): bool
+    {
+        return $this->role === 'student';
+    }
+
     public function weeklyExamMarks()
     {
         return $this->hasMany(WeeklyExamMark::class, 'recorded_by');
@@ -103,5 +108,10 @@ class User extends Authenticatable
     public function teacherNotes()
     {
         return $this->hasMany(TeacherNote::class, 'uploaded_by');
+    }
+
+    public function studentProfile()
+    {
+        return $this->hasOne(Student::class, 'user_id');
     }
 }

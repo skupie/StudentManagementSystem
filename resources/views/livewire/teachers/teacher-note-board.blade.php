@@ -6,12 +6,33 @@
                 <x-secondary-button type="button" wire:click="cancelEdit">Cancel</x-secondary-button>
             @endif
         </div>
+        @if ($isTeacherRole && ! $teacherLinked)
+            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                No teacher profile is linked with this login.
+            </div>
+        @elseif ($isTeacherRole && empty($subjectOptions))
+            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                No subject is assigned to your teacher profile. Contact admin.
+            </div>
+        @endif
 
-        <div class="grid md:grid-cols-2 gap-3">
+        <div class="grid md:grid-cols-3 gap-3">
             <div>
                 <x-input-label value="Title" />
                 <x-text-input type="text" wire:model.defer="form.title" class="mt-1 block w-full" placeholder="Chapter / Topic" />
                 <x-input-error :messages="$errors->get('form.title')" class="mt-1" />
+            </div>
+            <div>
+                <x-input-label value="Subject" />
+                <select wire:model.live="form.subject" class="mt-1 block w-full rounded-md border-gray-300">
+                    @if (! $isTeacherRole)
+                        <option value="">General</option>
+                    @endif
+                    @foreach ($subjectOptions as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <x-input-error :messages="$errors->get('form.subject')" class="mt-1" />
             </div>
             <div>
                 <x-input-label value="File" />
@@ -36,15 +57,22 @@
             </div>
 
             <div>
-                <x-input-label value="Sections (Select multiple)" />
+                <x-input-label :value="$allowMultipleSections ? 'Sections (Select multiple)' : 'Section (Select one)'" />
                 <div class="mt-1 border rounded-md border-gray-300 p-3 max-h-36 overflow-y-auto space-y-1">
                     @foreach ($sectionOptions as $key => $label)
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model.defer="form.sections" value="{{ $key }}" class="rounded border-gray-300 text-indigo-600">
+                            <input type="checkbox"
+                                   wire:model.live="form.sections"
+                                   value="{{ $key }}"
+                                   @disabled($isTeacherRole && ! $allowMultipleSections && ! in_array($key, $form['sections'] ?? [], true))
+                                   class="rounded border-gray-300 text-indigo-600">
                             <span>{{ $label }}</span>
                         </label>
                     @endforeach
                 </div>
+                @if ($isTeacherRole && ! $allowMultipleSections)
+                    <p class="mt-1 text-xs text-gray-500">For this subject, only one section can be selected.</p>
+                @endif
                 <x-input-error :messages="$errors->get('form.sections')" class="mt-1" />
                 <x-input-error :messages="$errors->get('form.sections.*')" class="mt-1" />
             </div>
@@ -57,7 +85,7 @@
         </div>
 
         <div class="text-right">
-            <x-primary-button type="button" wire:click="save">
+            <x-primary-button type="button" wire:click="save" :disabled="$isTeacherRole && empty($subjectOptions)">
                 {{ $editingId ? 'Update Note' : 'Upload Note' }}
             </x-primary-button>
         </div>
@@ -92,6 +120,7 @@
                 <thead>
                     <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         <th class="px-4 py-2">Title</th>
+                        <th class="px-4 py-2">Subject</th>
                         <th class="px-4 py-2">Class / Section</th>
                         <th class="px-4 py-2">Uploaded By</th>
                         <th class="px-4 py-2">File</th>
@@ -107,6 +136,7 @@
                                     <div class="text-xs text-gray-500">{{ $note->description }}</div>
                                 @endif
                             </td>
+                            <td class="px-4 py-2">{{ $note->subject ? \App\Support\AcademyOptions::subjectLabel($note->subject) : 'General' }}</td>
                             <td class="px-4 py-2">
                                 <div class="text-xs font-semibold text-gray-500">Classes</div>
                                 <div>
@@ -122,7 +152,7 @@
                                 <div class="text-xs text-gray-500">{{ $note->created_at?->format('d M Y') }}</div>
                             </td>
                             <td class="px-4 py-2">
-                                <a href="{{ route('teacher.notes.file', $note) }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline">
+                                <a href="{{ route('teacher.notes.file', ['teacherNote' => $note->id, 'v' => $note->updated_at?->timestamp]) }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline">
                                     {{ $note->original_name }}
                                 </a>
                             </td>
@@ -137,7 +167,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-gray-500">No uploaded notes found.</td>
+                            <td colspan="6" class="px-4 py-6 text-center text-gray-500">No uploaded notes found.</td>
                         </tr>
                     @endforelse
                 </tbody>

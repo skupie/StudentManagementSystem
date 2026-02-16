@@ -15,6 +15,7 @@ class TeacherNote extends Model
         'description',
         'class_level',
         'section',
+        'subject',
         'target_classes',
         'target_sections',
         'file_path',

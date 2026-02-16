@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Teachers;
 
+use App\Models\Teacher;
 use App\Models\TeacherNote;
 use App\Support\AcademyOptions;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -22,6 +24,7 @@ class TeacherNoteBoard extends Component
     public array $form = [
         'title' => '',
         'description' => '',
+        'subject' => '',
         'class_levels' => ['hsc_1'],
         'sections' => ['science'],
     ];
@@ -33,20 +36,44 @@ class TeacherNoteBoard extends Component
 
     protected function rules(): array
     {
+        $isTeacherRole = $this->isTeacherRole();
+        $allowedSubjectKeys = array_keys($this->availableSubjectOptions());
+        $sectionRules = ['required', 'array', 'min:1'];
+        if ($isTeacherRole && ! $this->canSelectMultipleSections()) {
+            $sectionRules[] = 'max:1';
+        }
+
         return [
             'form.title' => ['required', 'string', 'max:255'],
             'form.description' => ['nullable', 'string'],
+            'form.subject' => $isTeacherRole
+                ? ['required', Rule::in($allowedSubjectKeys)]
+                : ['nullable', Rule::in(array_keys(AcademyOptions::subjects()))],
             'form.class_levels' => ['required', 'array', 'min:1'],
             'form.class_levels.*' => [Rule::in(array_keys(AcademyOptions::classes()))],
-            'form.sections' => ['required', 'array', 'min:1'],
+            'form.sections' => $sectionRules,
             'form.sections.*' => [Rule::in(array_keys(AcademyOptions::sections()))],
             'uploadFile' => [$this->editingId ? 'nullable' : 'required', 'file', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png', 'max:10240'],
         ];
     }
 
+    public function mount(): void
+    {
+        $this->ensureSubjectSelection();
+        $this->enforceSectionSelectionRule();
+    }
+
     public function render()
     {
         $user = auth()->user();
+        $subjectOptions = $this->availableSubjectOptions();
+        $isTeacherRole = $this->isTeacherRole();
+        $teacherLinked = $isTeacherRole ? (bool) $this->resolveTeacher() : true;
+        $filterSectionOptions = $isTeacherRole ? $this->filterSectionOptionsForTeacher() : (['all' => 'All Sections'] + AcademyOptions::sections());
+
+        if (! array_key_exists($this->sectionFilter, $filterSectionOptions)) {
+            $this->sectionFilter = (string) (array_key_first($filterSectionOptions) ?? 'all');
+        }
 
         $notes = TeacherNote::query()
             ->with('uploader')
@@ -78,8 +105,12 @@ class TeacherNoteBoard extends Component
             'notes' => $notes,
             'classOptions' => AcademyOptions::classes(),
             'sectionOptions' => AcademyOptions::sections(),
+            'subjectOptions' => $subjectOptions,
             'filterClassOptions' => ['all' => 'All Classes'] + AcademyOptions::classes(),
-            'filterSectionOptions' => ['all' => 'All Sections'] + AcademyOptions::sections(),
+            'filterSectionOptions' => $filterSectionOptions,
+            'isTeacherRole' => $isTeacherRole,
+            'teacherLinked' => $teacherLinked,
+            'allowMultipleSections' => $this->canSelectMultipleSections(),
         ]);
     }
 
@@ -98,9 +129,22 @@ class TeacherNoteBoard extends Component
         $this->resetPage();
     }
 
+    public function updatedFormSubject(): void
+    {
+        $this->ensureSubjectSelection();
+        $this->enforceSectionSelectionRule();
+    }
+
+    public function updatedFormSections(): void
+    {
+        $this->enforceSectionSelectionRule();
+    }
+
     public function save(): void
     {
         $isEditing = (bool) $this->editingId;
+        $this->ensureSubjectSelection();
+        $this->enforceSectionSelectionRule();
         $validated = $this->validate();
         $note = $this->editingId ? TeacherNote::find($this->editingId) : null;
         if ($this->editingId && (! $note || ! $this->canManageNote($note))) {
@@ -128,6 +172,7 @@ class TeacherNoteBoard extends Component
         TeacherNote::updateOrCreate(['id' => $this->editingId], [
             'title' => $validated['form']['title'],
             'description' => $validated['form']['description'],
+            'subject' => $validated['form']['subject'] ?: null,
             'class_level' => $classTargets[0] ?? 'hsc_1',
             'section' => $sectionTargets[0] ?? 'science',
             'target_classes' => $classTargets,
@@ -154,9 +199,12 @@ class TeacherNoteBoard extends Component
         $this->form = [
             'title' => $note->title,
             'description' => (string) ($note->description ?? ''),
+            'subject' => (string) ($note->subject ?? ''),
             'class_levels' => $note->classTargets(),
             'sections' => $note->sectionTargets(),
         ];
+        $this->ensureSubjectSelection();
+        $this->enforceSectionSelectionRule();
         $this->uploadFile = null;
         $this->resetValidation();
     }
@@ -214,10 +262,13 @@ class TeacherNoteBoard extends Component
         $this->form = [
             'title' => '',
             'description' => '',
+            'subject' => '',
             'class_levels' => ! empty($this->form['class_levels']) ? $this->form['class_levels'] : ['hsc_1'],
             'sections' => ! empty($this->form['sections']) ? $this->form['sections'] : ['science'],
         ];
 
+        $this->ensureSubjectSelection();
+        $this->enforceSectionSelectionRule();
         $this->uploadFile = null;
         $this->resetValidation();
     }
@@ -226,5 +277,153 @@ class TeacherNoteBoard extends Component
     {
         $user = auth()->user();
         return in_array($user?->role, ['admin', 'director'], true) || (int) $note->uploaded_by === (int) $user?->id;
+    }
+
+    protected function isTeacherRole(): bool
+    {
+        $user = auth()->user();
+        return in_array($user?->role, ['instructor', 'lead_instructor'], true);
+    }
+
+    protected function resolveTeacher(): ?Teacher
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
+
+        if (Schema::hasColumn('teachers', 'user_id')) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                return $teacher;
+            }
+        }
+
+        if (! empty($user->contact_number)) {
+            $teacher = Teacher::where('contact_number', $user->contact_number)->first();
+            if ($teacher) {
+                return $teacher;
+            }
+        }
+
+        return Teacher::where('name', $user->name)->first();
+    }
+
+    protected function availableSubjectOptions(): array
+    {
+        $allSubjects = AcademyOptions::subjects();
+        if (! $this->isTeacherRole()) {
+            return $allSubjects;
+        }
+
+        $teacher = $this->resolveTeacher();
+        if (! $teacher) {
+            return [];
+        }
+
+        $assigned = collect($teacher->subjects ?? [])
+            ->map(fn ($value) => (string) $value)
+            ->filter()
+            ->values();
+
+        if ($assigned->isEmpty() && ! empty($teacher->subject)) {
+            $assigned->push((string) $teacher->subject);
+        }
+
+        if ($assigned->isEmpty()) {
+            return [];
+        }
+
+        return collect($allSubjects)
+            ->filter(fn ($label, $key) => $assigned->contains((string) $key))
+            ->toArray();
+    }
+
+    protected function filterSectionOptionsForTeacher(): array
+    {
+        $sections = AcademyOptions::sections();
+        if ($this->teacherHasGlobalSubjects()) {
+            return ['all' => 'All Sections'] + $sections;
+        }
+
+        $allowedKeys = $this->teacherAllowedSectionKeys();
+        if (empty($allowedKeys)) {
+            return ['all' => 'All Sections'] + $sections;
+        }
+
+        return collect($sections)
+            ->filter(fn ($label, $key) => in_array((string) $key, $allowedKeys, true))
+            ->toArray();
+    }
+
+    protected function teacherHasGlobalSubjects(): bool
+    {
+        $subjects = array_map('strtolower', array_keys($this->availableSubjectOptions()));
+        foreach ($subjects as $subject) {
+            if ($subject === 'ict' || str_starts_with($subject, 'bangla_') || str_starts_with($subject, 'english_')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function teacherAllowedSectionKeys(): array
+    {
+        if ($this->teacherHasGlobalSubjects()) {
+            return array_keys(AcademyOptions::sections());
+        }
+
+        $subjectKeys = array_keys($this->availableSubjectOptions());
+        $sectionSubjects = (array) config('academy.subjects.by_section', []);
+        $allowedSections = [];
+
+        foreach ($sectionSubjects as $sectionKey => $subjectMap) {
+            $sectionSubjectKeys = array_map('strtolower', array_keys((array) $subjectMap));
+            foreach ($subjectKeys as $subjectKey) {
+                if (in_array(strtolower((string) $subjectKey), $sectionSubjectKeys, true)) {
+                    $allowedSections[] = (string) $sectionKey;
+                    break;
+                }
+            }
+        }
+
+        return array_values(array_unique($allowedSections));
+    }
+
+    protected function ensureSubjectSelection(): void
+    {
+        $subjectOptions = $this->availableSubjectOptions();
+        if (! array_key_exists((string) ($this->form['subject'] ?? ''), $subjectOptions)) {
+            $this->form['subject'] = (string) (array_key_first($subjectOptions) ?? '');
+        }
+    }
+
+    protected function canSelectMultipleSections(): bool
+    {
+        if (! $this->isTeacherRole()) {
+            return true;
+        }
+
+        $subject = (string) ($this->form['subject'] ?? '');
+        if ($subject === 'ict') {
+            return true;
+        }
+
+        return str_starts_with($subject, 'bangla_') || str_starts_with($subject, 'english_');
+    }
+
+    protected function enforceSectionSelectionRule(): void
+    {
+        $selectedSections = array_values(array_unique(array_filter((array) ($this->form['sections'] ?? []))));
+        if (empty($selectedSections)) {
+            $selectedSections = ['science'];
+        }
+
+        if (! $this->canSelectMultipleSections()) {
+            $selectedSections = [reset($selectedSections)];
+        }
+
+        $this->form['sections'] = $selectedSections;
     }
 }

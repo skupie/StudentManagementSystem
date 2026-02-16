@@ -5,6 +5,7 @@ use App\Http\Controllers\ArtisanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StudentExportController;
 use App\Http\Controllers\StudentNotesController;
+use App\Http\Controllers\StudentPortalNotesController;
 use App\Http\Controllers\TeacherNoteFileController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,19 @@ use Illuminate\Http\Request;
 
 Route::redirect('/', '/login');
 Route::view('/teacher/login', 'auth.teacher-login')->name('teacher.login');
+Route::view('/student/login', 'auth.student-login')->name('student.login');
+
+// Teacher portal on dedicated subdomain (if configured). Shows the teacher login without changing the URL path.
+if ($teacherDomain = env('TEACHER_PORTAL_DOMAIN')) {
+    Route::domain($teacherDomain)->group(function () {
+        Route::view('/', 'auth.teacher-login')->name('teacher.domain.login');
+    });
+}
+if ($studentDomain = env('STUDENT_PORTAL_DOMAIN')) {
+    Route::domain($studentDomain)->group(function () {
+        Route::view('/', 'auth.student-login')->name('student.domain.login');
+    });
+}
 
 // Public published model test results (no auth required)
 Route::view('/result', 'pages.public-model-test-results')->name('model-tests.publish.public');
@@ -45,6 +59,24 @@ Route::middleware([
     Route::view('/teacher-portal', 'pages.teacher-portal')
         ->middleware('role:instructor,lead_instructor')
         ->name('teacher.portal');
+    Route::view('/student-portal', 'pages.student-portal')
+        ->middleware('role:student')
+        ->name('student.portal');
+    Route::view('/student-routines', 'pages.student-routines')
+        ->middleware('role:student')
+        ->name('student.routines');
+    Route::view('/student-results', 'pages.student-results')
+        ->middleware('role:student')
+        ->name('student.results');
+    Route::view('/student-payments', 'pages.student-payments')
+        ->middleware('role:student')
+        ->name('student.payments');
+    Route::get('/student-notes-library', StudentPortalNotesController::class)
+        ->middleware('role:student')
+        ->name('student.notes');
+    Route::view('/student-credentials', 'pages.student-credentials')
+        ->middleware('role:admin,director,instructor,lead_instructor')
+        ->name('students.credentials');
     Route::view('/weekly-exam-assignments', 'pages.weekly-exam-assignments')
         ->middleware('role:admin,director,assistant')
         ->name('weekly-exam-assignments.index');

@@ -61,13 +61,13 @@
                 Welcome to Basic Academy
             </h1>
             <p class="text-lg font-semibold text-dark-accent">
-                Teachers Portal
+                Only For HSC
             </p>
         </div>
 
         <form method="POST" action="{{ route('login') }}" class="space-y-6">
             @csrf
-            <input type="hidden" name="teacher_login" value="1">
+            <input type="hidden" name="student_login" value="1">
             
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">

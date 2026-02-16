@@ -56,6 +56,24 @@ class FortifyServiceProvider extends ServiceProvider
                 ]);
             }
 
+            $isTeacherLogin = (bool) $request->boolean('teacher_login');
+            if ($isTeacherLogin && ! in_array($user->role, ['instructor', 'lead_instructor'], true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => __('Only teachers can log in from this page.'),
+                ]);
+            }
+            $isStudentLogin = (bool) $request->boolean('student_login');
+            if ($isStudentLogin && $user->role !== 'student') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => __('Only students can log in from this page.'),
+                ]);
+            }
+            if ($isStudentLogin && ! in_array((string) $user->contact_number, [$login, $mobile], true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => __('Use your contact number to log in on the student page.'),
+                ]);
+            }
+
             return Hash::check($request->password, $user->password) ? $user : null;
         });
 

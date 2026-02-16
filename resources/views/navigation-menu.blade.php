@@ -14,7 +14,33 @@
                 {{-- Desktop nav --}}
                 <div class="hidden sm:flex sm:items-center sm:ms-8 gap-4">
 
-                    @if (in_array($navRole, ['instructor', 'lead_instructor']))
+                    @if ($navRole === 'student')
+                        <x-nav-link href="{{ route('student.portal') }}" :active="request()->routeIs('student.portal')">
+                            {{ __('Student Portal') }}
+                        </x-nav-link>
+                        <x-nav-dropdown label="Routine" :active="request()->routeIs('student.routines')">
+                            <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                                {{ __('Routine') }}
+                            </div>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('student.routines', ['view' => 'weekly']) }}">
+                                {{ __('Weekly Test Routine') }}
+                            </a>
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('student.routines', ['view' => 'class']) }}">
+                                {{ __('Class Routine') }}
+                            </a>
+                        </x-nav-dropdown>
+                        <x-nav-link href="{{ route('student.results') }}" :active="request()->routeIs('student.results')">
+                            {{ __('Exam Results') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('student.payments') }}" :active="request()->routeIs('student.payments')">
+                            {{ __('Payment Logs') }}
+                        </x-nav-link>
+                        <x-nav-link href="{{ route('student.notes') }}" :active="request()->routeIs('student.notes')">
+                            {{ __('Notes') }}
+                        </x-nav-link>
+                    @elseif (in_array($navRole, ['instructor', 'lead_instructor']))
                         <x-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
                             {{ __('Teacher Portal') }}
                         </x-nav-link>
@@ -119,6 +145,12 @@
                                href="{{ route('students.index') }}">
                                 {{ __('Directory') }}
                             </a>
+                            @if (in_array($navRole, ['admin', 'director', 'instructor', 'lead_instructor']))
+                                <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                   href="{{ route('students.credentials') }}">
+                                    {{ __('Student Credentials') }}
+                                </a>
+                            @endif
 
                             <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                href="{{ route('attendance.index') }}">
@@ -389,7 +421,27 @@
     {{-- Mobile menu --}}
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-t border-gray-100">
         <div class="pt-2 pb-3 space-y-1 px-4">
-            @if (in_array($navRole, ['instructor', 'lead_instructor']))
+            @if ($navRole === 'student')
+                <x-responsive-nav-link href="{{ route('student.portal') }}" :active="request()->routeIs('student.portal')">
+                    {{ __('Student Portal') }}
+                </x-responsive-nav-link>
+                <div class="pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ __('Routine') }}</div>
+                <x-responsive-nav-link href="{{ route('student.routines', ['view' => 'weekly']) }}" :active="request()->routeIs('student.routines')">
+                    {{ __('Weekly Test Routine') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('student.routines', ['view' => 'class']) }}" :active="request()->routeIs('student.routines')">
+                    {{ __('Class Routine') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('student.results') }}" :active="request()->routeIs('student.results')">
+                    {{ __('Exam Results') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('student.payments') }}" :active="request()->routeIs('student.payments')">
+                    {{ __('Payment Logs') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('student.notes') }}" :active="request()->routeIs('student.notes')">
+                    {{ __('Notes') }}
+                </x-responsive-nav-link>
+            @elseif (in_array($navRole, ['instructor', 'lead_instructor']))
                 <x-responsive-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
                     {{ __('Teacher Portal') }}
                 </x-responsive-nav-link>
@@ -421,6 +473,11 @@
             <x-responsive-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.*')">
                 {{ __('Directory') }}
             </x-responsive-nav-link>
+            @if (in_array($navRole, ['admin', 'director', 'instructor', 'lead_instructor']))
+                <x-responsive-nav-link href="{{ route('students.credentials') }}" :active="request()->routeIs('students.credentials')">
+                    {{ __('Student Credentials') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.*')">
                 {{ __('Attendance') }}
             </x-responsive-nav-link>
