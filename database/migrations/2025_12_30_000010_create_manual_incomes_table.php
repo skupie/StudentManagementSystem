@@ -17,6 +17,7 @@ return new class extends Migration
             $table->date('income_date');
             $table->string('category')->nullable();
             $table->decimal('amount', 10, 2);
+            $table->string('receipt_number', 100)->nullable();
             $table->text('description')->nullable();
             $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

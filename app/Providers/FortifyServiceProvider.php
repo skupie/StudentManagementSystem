@@ -57,7 +57,7 @@ class FortifyServiceProvider extends ServiceProvider
             }
 
             $isTeacherLogin = (bool) $request->boolean('teacher_login');
-            if ($isTeacherLogin && ! in_array($user->role, ['instructor', 'lead_instructor'], true)) {
+            if ($isTeacherLogin && ! in_array($user->role, ['teacher', 'lead_instructor'], true)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     Fortify::username() => __('Only teachers can log in from this page.'),
                 ]);

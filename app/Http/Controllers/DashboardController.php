@@ -21,7 +21,7 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = $request->user();
-        if (in_array($user?->role, ['instructor', 'lead_instructor'], true)) {
+        if (in_array($user?->role, ['teacher', 'lead_instructor'], true)) {
             return redirect()->route('teacher.portal');
         }
         if ($user?->role === 'student') {
@@ -90,7 +90,7 @@ class DashboardController extends Controller
             'payments' => $recentPayments,
             'notes' => StudentNote::with('student')->latest('note_date')->take(4)->get(),
             'expenses' => Expense::latest('expense_date')->take(4)->get(),
-            'instructors' => User::where('role', 'instructor')->latest()->take(4)->get(),
+            'instructors' => User::whereIn('role', ['instructor', 'lead_instructor'])->latest()->take(4)->get(),
         ];
 
         $attendanceToday = Attendance::select('students.class_level', 'attendances.status', DB::raw('count(*) as total'))
@@ -112,7 +112,7 @@ class DashboardController extends Controller
             ->unique();
         $overdueHighlights = Student::whereIn('id', $overdueStudentIds)->with('feeInvoices')->take(5)->get();
 
-        $pendingInstructorIds = User::where('role', 'instructor')
+        $pendingInstructorIds = User::whereIn('role', ['instructor', 'lead_instructor'])
             ->where('is_active', true)
             ->whereDoesntHave('weeklyExamMarks', function ($query) use ($now) {
                 $query->where('exam_date', '>=', $now->copy()->subDays(7));

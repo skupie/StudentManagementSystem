@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
             $table->enum('class_level', ['hsc_1', 'hsc_2']);
             $table->enum('section', ['science', 'humanities', 'business_studies']);
+            $table->string('subject')->default('General');
             $table->date('exam_date');
             $table->decimal('marks_obtained', 8, 2);
             $table->integer('max_marks')->default(100);

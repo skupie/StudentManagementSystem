@@ -1,6 +1,6 @@
 <div class="space-y-6">
     @php
-        $canPublishResults = in_array(auth()->user()?->role, ['admin', 'director', 'assistant'], true);
+        $canPublishResults = in_array(auth()->user()?->role, ['admin', 'director', 'assistant', 'instructor'], true);
     @endphp
     <div class="bg-white shadow rounded-lg p-4 space-y-3">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">

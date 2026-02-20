@@ -173,11 +173,12 @@ class WeeklyExamBoard extends Component
             abort(403, 'Unauthorized action.');
         }
         $this->editingId = $mark->id;
+        $normalizedSubject = AcademyOptions::normalizeSubjectKey((string) $mark->subject);
         $this->form = [
             'student_id' => $mark->student_id,
             'class_level' => $mark->class_level,
             'section' => $mark->section,
-            'subject' => $mark->subject,
+            'subject' => (string) ($normalizedSubject ?? $mark->subject),
             'exam_date' => $mark->exam_date->format('Y-m-d'),
             'marks_obtained' => $mark->marks_obtained,
             'max_marks' => $mark->max_marks,
@@ -296,7 +297,7 @@ class WeeklyExamBoard extends Component
             return false;
         }
 
-        if (in_array($user->role, ['admin', 'director', 'assistant'], true)) {
+        if (in_array($user->role, ['admin', 'director', 'assistant', 'instructor'], true)) {
             return true;
         }
 
@@ -305,7 +306,7 @@ class WeeklyExamBoard extends Component
 
     protected function isTeacherRole(): bool
     {
-        return in_array(auth()->user()?->role, ['instructor', 'lead_instructor'], true);
+        return in_array(auth()->user()?->role, ['teacher', 'lead_instructor'], true);
     }
 
     protected function availableSectionOptions(): array
@@ -396,12 +397,6 @@ class WeeklyExamBoard extends Component
             return [];
         }
 
-        $allSubjects = AcademyOptions::subjects();
-        $labelToKey = [];
-        foreach ($allSubjects as $key => $label) {
-            $labelToKey[strtolower(trim((string) $label))] = (string) $key;
-        }
-
         $sectionKeys = array_keys(AcademyOptions::sections());
         $resolved = [];
 
@@ -411,13 +406,9 @@ class WeeklyExamBoard extends Component
                 continue;
             }
 
-            if (array_key_exists($value, $allSubjects)) {
-                $resolved[] = $value;
-                continue;
-            }
-
-            if (isset($labelToKey[$value])) {
-                $resolved[] = $labelToKey[$value];
+            $normalized = AcademyOptions::normalizeSubjectKey($value);
+            if ($normalized !== null) {
+                $resolved[] = $normalized;
                 continue;
             }
 
@@ -439,22 +430,6 @@ class WeeklyExamBoard extends Component
         $rawAssigned = $this->teacherAssignedValues();
         $subjects = $this->teacherAllowedSubjectKeys();
 
-        $globalPrefixes = ['bangla_', 'english_'];
-        $globalExact = ['ict'];
-
-        foreach ($subjects as $subject) {
-            $normalized = strtolower(trim((string) $subject));
-            if (in_array($normalized, $globalExact, true)) {
-                return array_keys(AcademyOptions::sections());
-            }
-
-            foreach ($globalPrefixes as $prefix) {
-                if (str_starts_with($normalized, $prefix)) {
-                    return array_keys(AcademyOptions::sections());
-                }
-            }
-        }
-
         foreach ($rawAssigned as $item) {
             $value = strtolower(trim((string) $item));
             if (array_key_exists($value, AcademyOptions::sections())) {
@@ -462,15 +437,8 @@ class WeeklyExamBoard extends Component
             }
         }
 
-        $sectionSubjects = config('academy.subjects.by_section', []);
-        foreach ($sectionSubjects as $sectionKey => $subjectMap) {
-            $sectionSubjectKeys = array_map('strtolower', array_keys((array) $subjectMap));
-            foreach ($subjects as $subject) {
-                if (in_array(strtolower((string) $subject), $sectionSubjectKeys, true)) {
-                    $allowedSections[] = (string) $sectionKey;
-                    break;
-                }
-            }
+        foreach ($subjects as $subject) {
+            $allowedSections = array_merge($allowedSections, AcademyOptions::sectionsForSubject((string) $subject));
         }
 
         $allowedSections = array_values(array_unique($allowedSections));

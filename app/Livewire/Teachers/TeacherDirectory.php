@@ -19,6 +19,7 @@ class TeacherDirectory extends Component
 
     public string $search = '';
     public string $statusFilter = 'all';
+    public string $subjectSearch = '';
     public ?int $editingId = null;
     public $importFile;
     public array $form = [
@@ -38,6 +39,7 @@ class TeacherDirectory extends Component
     {
         $dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
         $subjectOptions = $this->subjectOptions();
+        $filteredSubjectOptions = $this->filteredSubjectOptions($subjectOptions);
 
         $teachers = Teacher::query()
             ->with('loginUser')
@@ -62,6 +64,7 @@ class TeacherDirectory extends Component
             'canCreate' => $this->canManage(),
             'dayOptions' => $dayOptions,
             'subjectOptions' => $subjectOptions,
+            'filteredSubjectOptions' => $filteredSubjectOptions,
         ]);
     }
 
@@ -86,7 +89,7 @@ class TeacherDirectory extends Component
             return;
         }
 
-        $subjects = array_values(array_filter($data['subjects'] ?? []));
+        $subjects = $this->canonicalizeSubjects((array) ($data['subjects'] ?? []));
         $primarySubject = $subjects[0] ?? ($data['subject'] ?? null);
 
         if ($this->editingId) {
@@ -126,12 +129,13 @@ class TeacherDirectory extends Component
 
     protected function canManage(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'director', 'instructor', 'lead_instructor'], true);
+        return in_array(auth()->user()?->role, ['admin', 'director', 'teacher', 'instructor', 'lead_instructor'], true);
     }
 
     public function resetForm(): void
     {
         $this->editingId = null;
+        $this->subjectSearch = '';
         $this->form = [
             'name' => '',
             'subject' => '',
@@ -284,10 +288,15 @@ class TeacherDirectory extends Component
         }
 
         $this->editingId = $teacher->id;
+        $loadedSubjects = $this->canonicalizeSubjects((array) ($teacher->subjects ?? []));
+        if (empty($loadedSubjects) && ! empty($teacher->subject)) {
+            $loadedSubjects = $this->canonicalizeSubjects([(string) $teacher->subject]);
+        }
+
         $this->form = [
             'name' => $teacher->name,
             'subject' => $teacher->subject ?? '',
-            'subjects' => $teacher->subjects ?? [],
+            'subjects' => $loadedSubjects,
             'payment' => $teacher->payment ?? '',
             'contact_number' => $teacher->contact_number ?? '',
             'is_active' => (bool) $teacher->is_active,
@@ -296,6 +305,38 @@ class TeacherDirectory extends Component
             'password' => '',
             'password_confirmation' => '',
         ];
+        $this->subjectSearch = '';
+    }
+
+    public function addSubject(string $subjectKey): void
+    {
+        $subjectKey = trim($subjectKey);
+        if ($subjectKey === '') {
+            return;
+        }
+
+        $subjectOptions = $this->subjectOptions();
+        if (! array_key_exists($subjectKey, $subjectOptions)) {
+            return;
+        }
+
+        $subjects = $this->canonicalizeSubjects((array) ($this->form['subjects'] ?? []));
+        if (! in_array($subjectKey, $subjects, true)) {
+            $subjects[] = $subjectKey;
+        }
+
+        $this->form['subjects'] = $subjects;
+        $this->form['subject'] = $subjects[0] ?? '';
+        $this->subjectSearch = '';
+    }
+
+    public function removeSubject(string $subjectKey): void
+    {
+        $subjects = $this->canonicalizeSubjects((array) ($this->form['subjects'] ?? []));
+        $subjects = array_values(array_filter($subjects, fn ($item) => (string) $item !== (string) $subjectKey));
+
+        $this->form['subjects'] = $subjects;
+        $this->form['subject'] = $subjects[0] ?? '';
     }
 
     protected function syncTeacherLogin(Teacher $teacher, array $data): bool
@@ -318,7 +359,7 @@ class TeacherDirectory extends Component
             $linkedUser = User::create([
                 'name' => $teacher->name,
                 'email' => $this->generateTeacherEmail($teacher->id),
-                'role' => 'instructor',
+                'role' => 'teacher',
                 'subject' => $teacher->subject,
                 'payment' => $teacher->payment,
                 'contact_number' => $mobile,
@@ -412,5 +453,49 @@ class TeacherDirectory extends Component
         }
         $subjects = array_merge($subjects, $common);
         return collect($subjects)->filter()->unique()->toArray();
+    }
+
+    protected function filteredSubjectOptions(array $subjectOptions): array
+    {
+        $selected = $this->canonicalizeSubjects((array) ($this->form['subjects'] ?? []));
+        $search = strtolower(trim($this->subjectSearch));
+        if ($search === '') {
+            return [];
+        }
+
+        return collect($subjectOptions)
+            ->reject(fn ($label, $key) => in_array((string) $key, $selected, true))
+            ->filter(function ($label, $key) use ($search) {
+                return str_contains(strtolower((string) $label), $search)
+                    || str_contains(strtolower((string) $key), $search);
+            })
+            ->take(30)
+            ->toArray();
+    }
+
+    protected function canonicalizeSubjects(array $subjects): array
+    {
+        $subjectOptions = $this->subjectOptions();
+        $canonical = [];
+
+        foreach ($subjects as $subject) {
+            $value = trim((string) $subject);
+            if ($value === '') {
+                continue;
+            }
+
+            if (array_key_exists($value, $subjectOptions)) {
+                $canonical[] = $value;
+                continue;
+            }
+
+            $normalized = AcademyOptions::normalizeSubjectKey($value);
+            if ($normalized !== null && array_key_exists($normalized, $subjectOptions)) {
+                $canonical[] = $normalized;
+                continue;
+            }
+        }
+
+        return array_values(array_unique($canonical));
     }
 }

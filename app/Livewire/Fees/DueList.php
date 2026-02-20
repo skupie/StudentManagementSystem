@@ -5,9 +5,12 @@ namespace App\Livewire\Fees;
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
 use App\Models\Student;
+use App\Models\StudentDueAlertState;
 use App\Support\AcademyOptions;
 use App\Support\HandlesAutoDueInvoices;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class DueList extends Component
@@ -36,27 +39,7 @@ class DueList extends Component
 
     public function render()
     {
-        $students = Student::query()
-            ->with(['feeInvoices' => fn ($q) => $q->orderBy('billing_month')])
-            ->when($this->classFilter !== 'all', fn ($q) => $q->where('class_level', $this->classFilter))
-            ->when($this->sectionFilter !== 'all', fn ($q) => $q->where('section', $this->sectionFilter))
-            ->when($this->yearFilter, fn ($q) => $q->where('academic_year', 'like', '%' . $this->yearFilter . '%'))
-            ->when($this->nameFilter, fn ($q) => $q->where('name', 'like', '%' . $this->nameFilter . '%'))
-            ->orderBy('name')
-            ->get()
-            ->map(function (Student $student) {
-                $latestInvoiceMonth = $student->feeInvoices->max('billing_month');
-                $targetMonth = $this->monthFilter ? Carbon::parse($this->monthFilter)->startOfMonth() : null;
-                $asOf = $targetMonth
-                    ?: ($latestInvoiceMonth ? Carbon::parse($latestInvoiceMonth)->startOfMonth() : now()->startOfMonth());
-
-                $summary = $student->dueSummary($asOf);
-                $student->outstanding = $summary['amount'];
-                $student->due_months = implode(', ', $summary['months']);
-                return $student;
-            })
-            ->filter(fn (Student $student) => $student->outstanding > 0)
-            ->values();
+        $students = $this->filteredDueStudents();
 
         $totalDue = $students->sum('outstanding');
 
@@ -135,5 +118,81 @@ class DueList extends Component
             'section' => $this->sectionFilter,
             'year' => $this->yearFilter,
         ]);
+    }
+
+    public function sendManualDueAlert(int $studentId): void
+    {
+        if (! Schema::hasTable('student_due_alert_states')) {
+            $this->dispatch('notify', message: 'Due alert table missing. Please run migrations first.');
+            return;
+        }
+
+        $student = Student::find($studentId);
+        if (! $student) {
+            return;
+        }
+
+        StudentDueAlertState::updateOrCreate(
+            ['student_id' => $student->id],
+            [
+                'force_show_due_alert' => true,
+                'dismissed_until' => null,
+                'last_manual_trigger_at' => now(),
+            ]
+        );
+
+        $this->dispatch('notify', message: "Due alert sent for {$student->name}. It will appear on student portal login.");
+    }
+
+    public function sendManualDueAlertAll(): void
+    {
+        if (! Schema::hasTable('student_due_alert_states')) {
+            $this->dispatch('notify', message: 'Due alert table missing. Please run migrations first.');
+            return;
+        }
+
+        $students = $this->filteredDueStudents();
+        if ($students->isEmpty()) {
+            $this->dispatch('notify', message: 'No due students found to send alerts.');
+            return;
+        }
+
+        foreach ($students as $student) {
+            StudentDueAlertState::updateOrCreate(
+                ['student_id' => $student->id],
+                [
+                    'force_show_due_alert' => true,
+                    'dismissed_until' => null,
+                    'last_manual_trigger_at' => now(),
+                ]
+            );
+        }
+
+        $this->dispatch('notify', message: "Due alerts sent to {$students->count()} students successfully.");
+    }
+
+    protected function filteredDueStudents(): Collection
+    {
+        return Student::query()
+            ->with(['feeInvoices' => fn ($q) => $q->orderBy('billing_month')])
+            ->when($this->classFilter !== 'all', fn ($q) => $q->where('class_level', $this->classFilter))
+            ->when($this->sectionFilter !== 'all', fn ($q) => $q->where('section', $this->sectionFilter))
+            ->when($this->yearFilter, fn ($q) => $q->where('academic_year', 'like', '%' . $this->yearFilter . '%'))
+            ->when($this->nameFilter, fn ($q) => $q->where('name', 'like', '%' . $this->nameFilter . '%'))
+            ->orderBy('name')
+            ->get()
+            ->map(function (Student $student) {
+                $latestInvoiceMonth = $student->feeInvoices->max('billing_month');
+                $targetMonth = $this->monthFilter ? Carbon::parse($this->monthFilter)->startOfMonth() : null;
+                $asOf = $targetMonth
+                    ?: ($latestInvoiceMonth ? Carbon::parse($latestInvoiceMonth)->startOfMonth() : now()->startOfMonth());
+
+                $summary = $student->dueSummary($asOf);
+                $student->outstanding = $summary['amount'];
+                $student->due_months = implode(', ', $summary['months']);
+                return $student;
+            })
+            ->filter(fn (Student $student) => $student->outstanding > 0)
+            ->values();
     }
 }

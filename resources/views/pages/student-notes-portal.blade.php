@@ -49,7 +49,7 @@
                                                 <div class="text-xs text-gray-500">{{ $note->description }}</div>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2">{{ $note->display_subject ?? ($note->subject ? \App\Support\AcademyOptions::subjectLabel($note->subject) : 'General') }}</td>
+                                        <td class="px-4 py-2">{{ $note->display_subject ?? ($note->subject ? \App\Support\AcademyOptions::subjectLabel($note->subject) : '') }}</td>
                                         <td class="px-4 py-2">{{ $note->uploader?->name ?? 'Unknown' }}</td>
                                         <td class="px-4 py-2">{{ $note->created_at?->format('d M Y') }}</td>
                                         <td class="px-4 py-2">

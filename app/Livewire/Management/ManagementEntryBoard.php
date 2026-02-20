@@ -145,7 +145,7 @@ class ManagementEntryBoard extends Component
 
     protected function userIsInstructor(): bool
     {
-        return auth()->user()?->role === 'instructor';
+        return in_array(auth()->user()?->role, ['teacher', 'instructor'], true);
     }
 
     protected function userIsViewer(): bool

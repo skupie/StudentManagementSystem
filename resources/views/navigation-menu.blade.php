@@ -6,7 +6,7 @@
             <div class="flex items-center">
                 {{-- Logo --}}
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                    <x-application-mark class="block h-9 w-auto" />
+                    <img src="{{ asset('images/home.png') }}" alt="Home" class="block h-9 w-9 rounded object-cover" />
                 </a>
 
                 @php($navRole = Auth::user()?->role)
@@ -40,13 +40,17 @@
                         <x-nav-link href="{{ route('student.notes') }}" :active="request()->routeIs('student.notes')">
                             {{ __('Notes') }}
                         </x-nav-link>
-                    @elseif (in_array($navRole, ['instructor', 'lead_instructor']))
+                    @elseif (in_array($navRole, ['teacher', 'lead_instructor']))
                         <x-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
                             {{ __('Teacher Portal') }}
                         </x-nav-link>
 
                         <x-nav-link href="{{ route('class.notes.index') }}" :active="request()->routeIs('class.notes.*')">
                             {{ __('Lecture Notes') }}
+                        </x-nav-link>
+
+                        <x-nav-link href="{{ route('teacher.transactions') }}" :active="request()->routeIs('teacher.transactions')">
+                            {{ __('Transaction Log') }}
                         </x-nav-link>
 
                         <x-nav-dropdown label="Exams" :active="request()->routeIs('weekly-exams.*') || request()->routeIs('model-tests.*') || request()->routeIs('weekly-exam-syllabus.*')">
@@ -136,7 +140,7 @@
                         </x-nav-link>
 
                         {{-- Students dropdown --}}
-                        <x-nav-dropdown label="Students" :active="request()->routeIs('students.*') || request()->routeIs('attendance.*') || request()->routeIs('notes.*')">
+                        <x-nav-dropdown label="Students" :active="request()->routeIs('students.*') || request()->routeIs('attendance.*') || request()->routeIs('notes.*') || request()->routeIs('leaderboard.*') || request()->routeIs('class.sections')">
                             <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                                 {{ __('Students') }}
                             </div>
@@ -145,7 +149,7 @@
                                href="{{ route('students.index') }}">
                                 {{ __('Directory') }}
                             </a>
-                            @if (in_array($navRole, ['admin', 'director', 'instructor', 'lead_instructor']))
+                            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor', 'lead_instructor']))
                                 <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                    href="{{ route('students.credentials') }}">
                                     {{ __('Student Credentials') }}
@@ -155,6 +159,11 @@
                             <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                href="{{ route('attendance.index') }}">
                                 {{ __('Attendance') }}
+                            </a>
+
+                            <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                               href="{{ route('students.notices') }}">
+                                {{ __('Notice Board') }}
                             </a>
 
                             @if (in_array($navRole, ['instructor', 'assistant']))
@@ -172,10 +181,17 @@
                                 </a>
                             @endif
 
-                            @if (in_array($navRole, ['admin', 'director', 'instructor', 'assistant']))
+                            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor', 'assistant']))
                                 <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                    href="{{ route('leaderboard.index') }}">
                                     {{ __('Leaderboard') }}
+                                </a>
+                            @endif
+
+                            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor']))
+                                <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                   href="{{ route('class.sections') }}">
+                                    {{ __('Classes & Sections') }}
                                 </a>
                             @endif
                         </x-nav-dropdown>
@@ -197,7 +213,7 @@
                         </x-nav-dropdown>
 
                         {{-- Logs dropdown --}}
-                        @if (in_array($navRole, ['admin', 'director', 'instructor']))
+                        @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor']))
                             <x-nav-dropdown label="Logs" :active="request()->routeIs('management.entries') || request()->routeIs('attendance.overview')">
                                 <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                                     {{ __('Logs') }}
@@ -218,7 +234,7 @@
                         @endif
 
                         {{-- Holidays --}}
-                        @if (in_array($navRole, ['admin', 'director']))
+                        @if (in_array($navRole, ['admin', 'director', 'instructor']))
                             <x-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.*')">
                                 {{ __('Holidays') }}
                             </x-nav-link>
@@ -263,16 +279,9 @@
                             </x-nav-link>
                         @endif
 
-                        {{-- Classes & Sections --}}
-                        @if (in_array($navRole, ['admin', 'director', 'instructor']))
-                            <x-nav-link href="{{ route('class.sections') }}" :active="request()->routeIs('class.sections')">
-                                {{ __('Classes & Sections') }}
-                            </x-nav-link>
-                        @endif
-
                         {{-- Teachers --}}
-                        @if (in_array($navRole, ['admin', 'director']))
-                            <x-nav-dropdown label="Teachers" :active="request()->routeIs('teachers.*') || request()->routeIs('teacher.payments')">
+                        @if (in_array($navRole, ['admin', 'director', 'instructor']))
+                            <x-nav-dropdown label="Teachers" :active="request()->routeIs('teachers.*') || request()->routeIs('teacher.payments') || request()->routeIs('class.notes.*')">
                                 <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                                     {{ __('Teachers') }}
                                 </div>
@@ -284,6 +293,10 @@
                                 <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                    href="{{ route('teacher.payments') }}">
                                     {{ __('Teacher Payments') }}
+                                </a>
+                                <a class="flex items-center rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                   href="{{ route('class.notes.index') }}">
+                                    {{ __('Lecture Notes') }}
                                 </a>
                             </x-nav-dropdown>
                         @else
@@ -441,12 +454,15 @@
                 <x-responsive-nav-link href="{{ route('student.notes') }}" :active="request()->routeIs('student.notes')">
                     {{ __('Notes') }}
                 </x-responsive-nav-link>
-            @elseif (in_array($navRole, ['instructor', 'lead_instructor']))
+            @elseif (in_array($navRole, ['teacher', 'lead_instructor']))
                 <x-responsive-nav-link href="{{ route('teacher.portal') }}" :active="request()->routeIs('teacher.portal')">
                     {{ __('Teacher Portal') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link href="{{ route('class.notes.index') }}" :active="request()->routeIs('class.notes.*')">
                     {{ __('Lecture Notes') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('teacher.transactions') }}" :active="request()->routeIs('teacher.transactions')">
+                    {{ __('Transaction Log') }}
                 </x-responsive-nav-link>
                 <div class="pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ __('Exams') }}</div>
                 <x-responsive-nav-link href="{{ route('weekly-exams.index') }}" :active="request()->routeIs('weekly-exams.*')">
@@ -473,13 +489,16 @@
             <x-responsive-nav-link href="{{ route('students.index') }}" :active="request()->routeIs('students.*')">
                 {{ __('Directory') }}
             </x-responsive-nav-link>
-            @if (in_array($navRole, ['admin', 'director', 'instructor', 'lead_instructor']))
+            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor', 'lead_instructor']))
                 <x-responsive-nav-link href="{{ route('students.credentials') }}" :active="request()->routeIs('students.credentials')">
                     {{ __('Student Credentials') }}
                 </x-responsive-nav-link>
             @endif
             <x-responsive-nav-link href="{{ route('attendance.index') }}" :active="request()->routeIs('attendance.*')">
                 {{ __('Attendance') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link href="{{ route('students.notices') }}" :active="request()->routeIs('students.notices')">
+                {{ __('Notice Board') }}
             </x-responsive-nav-link>
             @if (in_array($navRole, ['instructor', 'assistant']))
                 <x-responsive-nav-link href="{{ route('notes.index') }}" :active="request()->routeIs('notes.*')">
@@ -491,9 +510,14 @@
                     {{ __('Transfer') }}
                 </x-responsive-nav-link>
             @endif
-            @if (in_array($navRole, ['admin', 'director', 'instructor', 'assistant']))
+            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor', 'assistant']))
                 <x-responsive-nav-link href="{{ route('leaderboard.index') }}" :active="request()->routeIs('leaderboard.*')">
                     {{ __('Leaderboard') }}
+                </x-responsive-nav-link>
+            @endif
+            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor']))
+                <x-responsive-nav-link href="{{ route('class.sections') }}" :active="request()->routeIs('class.sections')">
+                    {{ __('Classes & Sections') }}
                 </x-responsive-nav-link>
             @endif
 
@@ -505,7 +529,7 @@
                 {{ __('Due List') }}
             </x-responsive-nav-link>
 
-            @if (in_array($navRole, ['admin', 'director', 'instructor']))
+            @if (in_array($navRole, ['admin', 'director', 'teacher', 'instructor']))
                 <div class="pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ __('Logs') }}</div>
                 <x-responsive-nav-link href="{{ route('management.entries') }}" :active="request()->routeIs('management.entries')">
                     {{ __('Management Log') }}
@@ -517,7 +541,7 @@
                 @endif
             @endif
 
-            @if (in_array($navRole, ['admin', 'director']))
+            @if (in_array($navRole, ['admin', 'director', 'instructor']))
                 <x-responsive-nav-link href="{{ route('holidays.index') }}" :active="request()->routeIs('holidays.*')">
                     {{ __('Holidays') }}
                 </x-responsive-nav-link>
@@ -552,17 +576,14 @@
             @endif
 
             @if (in_array($navRole, ['admin', 'director', 'instructor']))
-                <x-responsive-nav-link href="{{ route('class.sections') }}" :active="request()->routeIs('class.sections')">
-                    {{ __('Classes & Sections') }}
-                </x-responsive-nav-link>
-            @endif
-
-            @if (in_array($navRole, ['admin', 'director']))
                 <x-responsive-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.*')">
                     {{ __('Teachers') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link href="{{ route('teacher.payments') }}" :active="request()->routeIs('teacher.payments')">
                     {{ __('Teacher Payments') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link href="{{ route('class.notes.index') }}" :active="request()->routeIs('class.notes.*')">
+                    {{ __('Lecture Notes') }}
                 </x-responsive-nav-link>
             @else
                 <x-responsive-nav-link href="{{ route('teachers.index') }}" :active="request()->routeIs('teachers.*')">

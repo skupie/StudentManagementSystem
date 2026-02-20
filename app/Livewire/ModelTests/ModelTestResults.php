@@ -515,24 +515,17 @@ class ModelTestResults extends Component
             return '';
         }
 
-        $options = $this->subjectOptions();
-        $normalized = $this->normalizeSubjectKey($key);
-
-        if (isset($options[$normalized])) {
-            return $options[$normalized];
-        }
-
-        return $normalized !== '' ? ucfirst($normalized) : $key;
+        return AcademyOptions::subjectLabel($key);
     }
 
     protected function canManage(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'director', 'instructor', 'assistant'], true);
+        return in_array(auth()->user()?->role, ['admin', 'director', 'teacher', 'instructor', 'assistant'], true);
     }
 
     protected function canPublishResults(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'director', 'assistant'], true);
+        return in_array(auth()->user()?->role, ['admin', 'director', 'assistant', 'instructor'], true);
     }
 
     protected function students()

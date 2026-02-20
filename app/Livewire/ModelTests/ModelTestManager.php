@@ -177,7 +177,7 @@ class ModelTestManager extends Component
         if ($test) {
             $subjectOptions = $this->availableSubjectOptions($this->currentMarksSection());
             $this->ensureSubjectDefault($subjectOptions);
-            $testSubject = (string) ($test->subject ?? '');
+            $testSubject = (string) (AcademyOptions::normalizeSubjectKey((string) ($test->subject ?? '')) ?? $test->subject ?? '');
             if (! empty($subjectOptions) && array_key_exists($testSubject, $subjectOptions)) {
                 $this->marksForm['subject'] = $testSubject;
             } else {
@@ -488,7 +488,7 @@ class ModelTestManager extends Component
         $this->marksForm['student_id'] = $result->model_test_student_id;
         $this->marksForm['model_test_id'] = $result->model_test_id;
         $this->marksForm['year'] = $result->year;
-        $this->marksForm['subject'] = $result->subject;
+        $this->marksForm['subject'] = (string) (AcademyOptions::normalizeSubjectKey((string) ($result->subject ?? '')) ?? $result->subject);
         $this->marksForm['test_type'] = $result->test?->type ?? 'full';
         $this->marksForm['mcq_mark'] = $result->mcq_mark;
         $this->marksForm['cq_mark'] = $result->cq_mark;
@@ -714,7 +714,7 @@ class ModelTestManager extends Component
 
     protected function isTeacherRole(): bool
     {
-        return in_array(auth()->user()?->role, ['instructor', 'lead_instructor'], true);
+        return in_array(auth()->user()?->role, ['teacher', 'lead_instructor'], true);
     }
 
     protected function resolveTeacher(): ?Teacher
@@ -753,12 +753,6 @@ class ModelTestManager extends Component
             return [];
         }
 
-        $allSubjects = AcademyOptions::subjects();
-        $labelToKey = [];
-        foreach ($allSubjects as $key => $label) {
-            $labelToKey[strtolower(trim((string) $label))] = (string) $key;
-        }
-
         $sectionKeys = array_keys($this->sectionOptions());
         $resolved = [];
 
@@ -768,15 +762,9 @@ class ModelTestManager extends Component
                 continue;
             }
 
-            // Direct key match.
-            if (array_key_exists($value, $allSubjects)) {
-                $resolved[] = $value;
-                continue;
-            }
-
-            // Label match (e.g. "Physics 1st").
-            if (isset($labelToKey[$value])) {
-                $resolved[] = $labelToKey[$value];
+            $normalized = AcademyOptions::normalizeSubjectKey($value);
+            if ($normalized !== null) {
+                $resolved[] = $normalized;
                 continue;
             }
 
@@ -800,26 +788,6 @@ class ModelTestManager extends Component
         $rawAssigned = $this->teacherAssignedValues();
 
         $subjects = $this->teacherAllowedSubjectKeys();
-        if (empty($subjects)) {
-            // If teacher assignment stores a section key only, handle that below.
-            $subjects = [];
-        }
-
-        $globalPrefixes = ['bangla_', 'english_'];
-        $globalExact = ['ict'];
-
-        foreach ($subjects as $subject) {
-            $normalized = strtolower(trim((string) $subject));
-            if (in_array($normalized, $globalExact, true)) {
-                return array_keys($this->sectionOptions());
-            }
-
-            foreach ($globalPrefixes as $prefix) {
-                if (str_starts_with($normalized, $prefix)) {
-                    return array_keys($this->sectionOptions());
-                }
-            }
-        }
 
         // Support teacher assignment values saved as section keys.
         foreach ($rawAssigned as $item) {
@@ -829,15 +797,8 @@ class ModelTestManager extends Component
             }
         }
 
-        $sectionSubjects = config('academy.subjects.by_section', []);
-        foreach ($sectionSubjects as $sectionKey => $subjectMap) {
-            $sectionSubjectKeys = array_map('strtolower', array_keys((array) $subjectMap));
-            foreach ($subjects as $subject) {
-                if (in_array(strtolower((string) $subject), $sectionSubjectKeys, true)) {
-                    $allowedSections[] = (string) $sectionKey;
-                    break;
-                }
-            }
+        foreach ($subjects as $subject) {
+            $allowedSections = array_merge($allowedSections, AcademyOptions::sectionsForSubject((string) $subject));
         }
 
         $allowedSections = array_values(array_unique($allowedSections));
@@ -932,7 +893,7 @@ class ModelTestManager extends Component
             return false;
         }
 
-        $key = strtolower(trim($subject));
+        $key = $this->normalizeSubjectKey($subject);
         return str_contains($key, 'english');
     }
 
@@ -944,6 +905,8 @@ class ModelTestManager extends Component
         $allowed = [
             'physics',
             'chemistry',
+            'biology',
+            'higher_math',
             'math',
             'botany',
             'zoology',
@@ -965,12 +928,15 @@ class ModelTestManager extends Component
 
     protected function normalizeSubjectKey(?string $subject): string
     {
-        if (! $subject) {
+        $normalized = AcademyOptions::normalizeSubjectKey($subject);
+        if (! $normalized) {
             return '';
         }
 
-        $key = strtolower(trim($subject));
-        return preg_replace('/[\\s_-]*(1st|2nd|3rd|4th)$/i', '', $key) ?? $key;
+        $key = strtolower(trim($normalized));
+        $key = preg_replace('/[\\s_-]*(1st|2nd|3rd|4th)(_paper)?$/i', '', $key) ?? $key;
+
+        return str_replace('higher_mathematics', 'higher_math', $key);
     }
 
     protected function stringContainsAny(string $haystack, array $needles): bool

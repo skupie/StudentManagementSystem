@@ -23,9 +23,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::factory()->create([
-            'name' => 'Lead Instructor',
+            'name' => 'Teacher',
             'email' => 'instructor@academy.test',
-            'role' => 'instructor',
+            'role' => 'teacher',
             'is_active' => true,
         ]);
     }

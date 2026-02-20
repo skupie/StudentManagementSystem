@@ -18,13 +18,13 @@ class StudentPortalNotesController extends Controller
     {
         $student = $this->resolveStudent();
         $subjectColumnExists = Schema::hasColumn('teacher_notes', 'subject');
-        $selectedSubject = (string) $request->query('subject', 'general');
+        $selectedSubject = (string) $request->query('subject', 'all');
 
         if (! $student) {
             return view('pages.student-notes-portal', [
                 'student' => null,
                 'subjectOptions' => [],
-                'selectedSubject' => 'general',
+                'selectedSubject' => 'all',
                 'notes' => collect(),
                 'subjectColumnExists' => $subjectColumnExists,
             ]);
@@ -41,7 +41,7 @@ class StudentPortalNotesController extends Controller
                     ->orWhereJsonContains('target_sections', $student->section);
             });
 
-        $subjectOptions = ['general' => 'General'];
+        $subjectOptions = ['all' => 'All'];
         if ($subjectColumnExists) {
             $availableSubjects = (clone $baseQuery)
                 ->whereNotNull('subject')
@@ -57,19 +57,14 @@ class StudentPortalNotesController extends Controller
         }
 
         if (! array_key_exists($selectedSubject, $subjectOptions)) {
-            $selectedSubject = 'general';
+            $selectedSubject = 'all';
         }
 
         $notes = (clone $baseQuery)
             ->when($subjectColumnExists, function ($query) use ($selectedSubject) {
-                if ($selectedSubject === 'general') {
-                    $query->where(function ($inner) {
-                        $inner->whereNull('subject')->orWhere('subject', '');
-                    });
-                    return;
+                if ($selectedSubject !== 'all') {
+                    $query->where('subject', $selectedSubject);
                 }
-
-                $query->where('subject', $selectedSubject);
             })
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
@@ -123,7 +118,7 @@ class StudentPortalNotesController extends Controller
             return AcademyOptions::subjectLabel($fallback);
         }
 
-        return 'General';
+        return '';
     }
 
     protected function subjectFromTeacherAssignment(int $uploadedBy): ?string

@@ -14,6 +14,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('class_level', 50);
             $table->string('section', 50);
+            $table->string('subject', 100)->nullable();
+            $table->json('target_classes')->nullable();
+            $table->json('target_sections')->nullable();
             $table->string('file_path');
             $table->string('original_name');
             $table->string('mime_type', 120)->nullable();
@@ -22,6 +25,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['class_level', 'section']);
+            $table->index('subject');
             $table->index(['uploaded_by', 'created_at']);
         });
     }

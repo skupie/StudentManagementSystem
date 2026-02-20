@@ -17,10 +17,13 @@ return new class extends Migration
             $table->date('billing_month');
             $table->date('due_date')->nullable();
             $table->decimal('amount_due', 10, 2);
+            $table->decimal('scholarship_amount', 10, 2)->default(0);
             $table->decimal('amount_paid', 10, 2)->default(0);
             $table->enum('status', ['pending', 'partial', 'paid'])->default('pending');
             $table->string('payment_mode_last')->nullable();
             $table->text('notes')->nullable();
+            $table->boolean('was_active')->default(true);
+            $table->boolean('manual_override')->default(false);
             $table->timestamps();
 
             $table->unique(['student_id', 'billing_month']);

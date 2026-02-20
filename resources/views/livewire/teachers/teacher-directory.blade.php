@@ -60,13 +60,53 @@
                 </div>
                 <div>
                     <x-input-label value="Subjects" />
-                    <div class="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
-                        @foreach ($subjectOptions as $key => $label)
-                            <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model.defer="form.subjects" value="{{ $key }}" class="rounded border-gray-300 text-indigo-600">
-                                <span>{{ $label }}</span>
-                            </label>
-                        @endforeach
+                    <div class="mt-1 space-y-2">
+                        <div class="min-h-[32px] rounded-md border border-gray-200 bg-gray-50 px-2 py-2">
+                            <div class="flex flex-wrap gap-2">
+                                @forelse (($form['subjects'] ?? []) as $subjectKey)
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                        {{ $subjectOptions[$subjectKey] ?? \App\Support\AcademyOptions::subjectLabel((string) $subjectKey) }}
+                                        <button
+                                            type="button"
+                                            wire:click="removeSubject('{{ $subjectKey }}')"
+                                            class="text-indigo-500 hover:text-indigo-700"
+                                            aria-label="Remove subject"
+                                        >
+                                            x
+                                        </button>
+                                    </span>
+                                @empty
+                                    <span class="text-xs text-gray-500">No subject selected yet.</span>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <div class="rounded-md border border-gray-300 bg-white">
+                            <div class="px-3 py-2">
+                                <x-text-input
+                                    type="text"
+                                    wire:model.live.debounce.250ms="subjectSearch"
+                                    class="block w-full border-0 p-0 focus:ring-0"
+                                    placeholder="Search subject and click to add..."
+                                />
+                            </div>
+                            @if (trim((string) ($subjectSearch ?? '')) !== '')
+                                <div class="border-t border-gray-100 max-h-40 overflow-y-auto p-2 space-y-1">
+                                    @forelse ($filteredSubjectOptions as $key => $label)
+                                        <button
+                                            type="button"
+                                            wire:click="addSubject('{{ $key }}')"
+                                            class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-indigo-50"
+                                        >
+                                            <span>{{ $label }}</span>
+                                            <span class="text-[11px] text-indigo-600">Add</span>
+                                        </button>
+                                    @empty
+                                        <div class="px-2 py-1 text-xs text-gray-500">No matching subject found.</div>
+                                    @endforelse
+                                </div>
+                            @endif
+                        </div>
                     </div>
                     <x-input-error :messages="$errors->get('form.subjects')" class="mt-1" />
                 </div>
@@ -151,7 +191,11 @@
                         </td>
                         <td class="px-4 py-2">
                             @php($subjects = $teacher->subjects ?? [])
-                            {{ !empty($subjects) ? implode(', ', $subjects) : ($teacher->subject ?? '—') }}
+                            @if (! empty($subjects))
+                                {{ collect($subjects)->map(fn ($subject) => \App\Support\AcademyOptions::subjectLabel((string) $subject))->implode(', ') }}
+                            @else
+                                {{ $teacher->subject ? \App\Support\AcademyOptions::subjectLabel((string) $teacher->subject) : '—' }}
+                            @endif
                         </td>
                         <td class="px-4 py-2">
                             <span class="px-2 py-1 rounded-full text-xs {{ $teacher->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">

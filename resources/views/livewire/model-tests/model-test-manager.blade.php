@@ -142,7 +142,7 @@
             showPractical: false,
             recompute() {
                 const normalize = (v) => (v || '').toString().toLowerCase().replace(/_(1st|2nd)$/,'').trim();
-                const allowed = ['physics','chemistry','math','botany','zoology','ict'];
+                const allowed = ['physics','chemistry','biology','higher_math','math','botany','zoology','ict'];
                 const sec = (this.section || '').toLowerCase();
                 const subj = normalize(this.subject);
                 this.showPractical = (sec === 'science' && allowed.includes(subj)) || subj === 'ict';

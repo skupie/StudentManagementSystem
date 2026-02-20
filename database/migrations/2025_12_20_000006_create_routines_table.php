@@ -16,6 +16,7 @@ return new class extends Migration
             $table->id();
             $table->enum('class_level', ['hsc_1', 'hsc_2']);
             $table->enum('section', ['science', 'humanities', 'business_studies']);
+            $table->date('routine_date')->default(now());
             $table->string('time_slot');
             $table->string('subject');
             $table->foreignId('teacher_id')->nullable()->constrained('teachers')->nullOnDelete();

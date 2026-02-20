@@ -16,9 +16,12 @@ return new class extends Migration
             $table->foreignId('fee_invoice_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
             $table->decimal('amount', 10, 2);
+            $table->decimal('previous_amount', 10, 2)->nullable();
+            $table->decimal('previous_scholarship_amount', 10, 2)->nullable();
             $table->date('payment_date');
             $table->string('payment_mode')->nullable();
             $table->string('reference')->nullable();
+            $table->string('receipt_number');
             $table->foreignId('recorded_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 

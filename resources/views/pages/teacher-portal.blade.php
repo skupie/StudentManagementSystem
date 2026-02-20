@@ -7,7 +7,7 @@
 
     <div class="py-6 space-y-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid md:grid-cols-2 gap-4">
+            <div class="grid md:grid-cols-3 gap-4">
                 <a href="{{ route('weekly-exams.index') }}" class="bg-white shadow rounded-lg p-4 block hover:bg-gray-50">
                     <h3 class="text-lg font-semibold text-gray-800">Exams</h3>
                     <p class="text-sm text-gray-500">Update weekly exam marks and results.</p>
@@ -15,6 +15,10 @@
                 <a href="{{ route('class.notes.index') }}" class="bg-white shadow rounded-lg p-4 block hover:bg-gray-50">
                     <h3 class="text-lg font-semibold text-gray-800">Lecture Notes</h3>
                     <p class="text-sm text-gray-500">Upload and manage notes by class and section.</p>
+                </a>
+                <a href="{{ route('teacher.transactions') }}" class="bg-white shadow rounded-lg p-4 block hover:bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-800">Transaction Log</h3>
+                    <p class="text-sm text-gray-500">View monthly payment entries recorded to ledger.</p>
                 </a>
             </div>
         </div>

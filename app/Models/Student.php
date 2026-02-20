@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Student extends Model
 {
@@ -76,6 +77,11 @@ class Student extends Model
     public function weeklyExamMarks(): HasMany
     {
         return $this->hasMany(WeeklyExamMark::class);
+    }
+
+    public function dueAlertState(): HasOne
+    {
+        return $this->hasOne(StudentDueAlertState::class);
     }
 
     public function dueSummary(?Carbon $asOf = null): array

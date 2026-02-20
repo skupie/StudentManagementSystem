@@ -35,6 +35,7 @@ class WeeklyExamSyllabusBoard extends Component
         if (! empty($options)) {
             $this->form['week_start_date'] = (string) array_key_first($options);
         }
+        $this->ensureSection();
         $this->ensureSubject();
     }
 
@@ -42,8 +43,8 @@ class WeeklyExamSyllabusBoard extends Component
     {
         $subjectKeys = array_keys($this->availableSubjectOptions());
         $examDateKeys = array_keys($this->availableExamDateOptions());
-        $user = auth()->user();
-        $isTeacherRole = in_array($user?->role, ['instructor', 'lead_instructor'], true);
+        $isTeacherRole = $this->isTeacherRole();
+        $sectionKeys = array_keys($this->availableSectionOptions());
 
         return [
             'form.week_start_date' => $isTeacherRole
@@ -51,7 +52,7 @@ class WeeklyExamSyllabusBoard extends Component
                 : ['required', 'date'],
             'form.title' => ['required', 'string', 'max:255'],
             'form.class_level' => ['required', Rule::in(array_keys(AcademyOptions::classes()))],
-            'form.section' => ['required', Rule::in(array_keys(AcademyOptions::sections()))],
+            'form.section' => ['required', Rule::in($sectionKeys)],
             'form.subject' => ['required', Rule::in($subjectKeys)],
             'form.syllabus_details' => ['required', 'string'],
         ];
@@ -59,12 +60,16 @@ class WeeklyExamSyllabusBoard extends Component
 
     public function render()
     {
-        $user = auth()->user();
-        $isTeacherRole = in_array($user?->role, ['instructor', 'lead_instructor'], true);
+        $isTeacherRole = $this->isTeacherRole();
         $teacher = $isTeacherRole ? $this->resolveTeacher() : null;
+        $sectionOptions = $this->availableSectionOptions();
+
+        if (! array_key_exists((string) ($this->form['section'] ?? ''), $sectionOptions)) {
+            $this->form['section'] = (string) (array_key_first($sectionOptions) ?? '');
+        }
 
         $syllabi = WeeklyExamSyllabus::query()
-            ->when($isTeacherRole, fn ($q) => $q->where('created_by', $user?->id))
+            ->when($isTeacherRole, fn ($q) => $q->where('created_by', auth()->id()))
             ->when($this->search, function ($q) {
                 $q->where(function ($inner) {
                     $inner->where('title', 'like', '%' . $this->search . '%')
@@ -80,11 +85,11 @@ class WeeklyExamSyllabusBoard extends Component
         return view('livewire.exams.weekly-exam-syllabus-board', [
             'syllabi' => $syllabi,
             'classOptions' => AcademyOptions::classes(),
-            'sectionOptions' => AcademyOptions::sections(),
+            'sectionOptions' => $sectionOptions,
             'subjectOptions' => $this->availableSubjectOptions(),
             'examDateOptions' => $this->availableExamDateOptions(),
             'filterClassOptions' => ['all' => 'All Classes'] + AcademyOptions::classes(),
-            'filterSectionOptions' => ['all' => 'All Sections'] + AcademyOptions::sections(),
+            'filterSectionOptions' => ['all' => 'All Sections'] + $sectionOptions,
             'isTeacherRole' => $isTeacherRole,
             'teacherLinked' => (bool) $teacher,
         ]);
@@ -113,7 +118,7 @@ class WeeklyExamSyllabusBoard extends Component
     {
         $query = WeeklyExamSyllabus::query()->whereKey($id);
         $user = auth()->user();
-        if (in_array($user?->role, ['instructor', 'lead_instructor'], true)) {
+        if (in_array($user?->role, ['teacher', 'lead_instructor'], true)) {
             $query->where('created_by', $user?->id);
         }
 
@@ -142,6 +147,7 @@ class WeeklyExamSyllabusBoard extends Component
         $this->form['title'] = '';
         $this->form['syllabus_details'] = '';
         $this->form['week_start_date'] = now('Asia/Dhaka')->startOfWeek()->toDateString();
+        $this->ensureSection();
         $this->ensureExamDate();
         $this->ensureSubject();
         $this->resetValidation();
@@ -149,6 +155,7 @@ class WeeklyExamSyllabusBoard extends Component
 
     protected function ensureSubject(): void
     {
+        $this->ensureSection();
         $available = $this->availableSubjectOptions();
         if (! array_key_exists($this->form['subject'] ?? '', $available)) {
             $this->form['subject'] = array_key_first($available) ?? '';
@@ -181,33 +188,19 @@ class WeeklyExamSyllabusBoard extends Component
 
     protected function availableSubjectOptions(): array
     {
-        $sectionSubjects = AcademyOptions::subjectsForSection($this->form['section'] ?? 'science');
-        $user = auth()->user();
-        $isTeacherRole = in_array($user?->role, ['instructor', 'lead_instructor'], true);
-        if (! $isTeacherRole) {
+        $section = (string) ($this->form['section'] ?? '');
+        $sectionSubjects = AcademyOptions::subjectsForSection($section);
+        if (! $this->isTeacherRole()) {
             return $sectionSubjects;
         }
 
-        $teacher = $this->resolveTeacher();
-        if (! $teacher) {
-            return [];
-        }
-
-        $allowed = collect($teacher->subjects ?? [])
-            ->filter()
-            ->map(fn ($value) => (string) $value)
-            ->values();
-
-        if ($allowed->isEmpty() && ! empty($teacher->subject)) {
-            $allowed->push((string) $teacher->subject);
-        }
-
-        if ($allowed->isEmpty()) {
+        $allowed = $this->teacherAllowedSubjectKeys();
+        if (empty($allowed)) {
             return [];
         }
 
         return collect($sectionSubjects)
-            ->filter(fn ($label, $key) => $allowed->contains((string) $key))
+            ->filter(fn ($label, $key) => in_array((string) $key, $allowed, true))
             ->toArray();
     }
 
@@ -221,9 +214,7 @@ class WeeklyExamSyllabusBoard extends Component
 
     protected function availableExamDateOptions(): array
     {
-        $user = auth()->user();
-        $isTeacherRole = in_array($user?->role, ['instructor', 'lead_instructor'], true);
-        if (! $isTeacherRole) {
+        if (! $this->isTeacherRole()) {
             return [];
         }
 
@@ -242,5 +233,112 @@ class WeeklyExamSyllabusBoard extends Component
                 return [$raw => \Carbon\Carbon::parse($date)->format('d M Y')];
             })
             ->toArray();
+    }
+
+    protected function isTeacherRole(): bool
+    {
+        return in_array(auth()->user()?->role, ['teacher', 'lead_instructor'], true);
+    }
+
+    protected function availableSectionOptions(): array
+    {
+        $sections = AcademyOptions::sections();
+        if (! $this->isTeacherRole()) {
+            return $sections;
+        }
+
+        $allowed = $this->teacherAllowedSectionKeys();
+        if (empty($allowed)) {
+            return [];
+        }
+
+        return collect($sections)
+            ->filter(fn ($label, $key) => in_array((string) $key, $allowed, true))
+            ->toArray();
+    }
+
+    protected function ensureSection(): void
+    {
+        $sectionOptions = $this->availableSectionOptions();
+        if (! array_key_exists((string) ($this->form['section'] ?? ''), $sectionOptions)) {
+            $this->form['section'] = (string) (array_key_first($sectionOptions) ?? '');
+        }
+    }
+
+    protected function teacherAssignedValues()
+    {
+        $teacher = $this->resolveTeacher();
+        if (! $teacher) {
+            return collect();
+        }
+
+        $raw = collect($teacher->subjects ?? [])
+            ->filter()
+            ->map(fn ($subject) => strtolower(trim((string) $subject)))
+            ->filter()
+            ->values();
+
+        if ($raw->isEmpty() && ! empty($teacher->subject)) {
+            $raw->push(strtolower(trim((string) $teacher->subject)));
+        }
+
+        return $raw;
+    }
+
+    protected function teacherAllowedSubjectKeys(): array
+    {
+        if (! $this->isTeacherRole()) {
+            return [];
+        }
+
+        $raw = $this->teacherAssignedValues();
+        if ($raw->isEmpty()) {
+            return [];
+        }
+
+        $sectionKeys = array_keys(AcademyOptions::sections());
+        $resolved = [];
+
+        foreach ($raw as $item) {
+            $normalized = AcademyOptions::normalizeSubjectKey((string) $item);
+            if ($normalized !== null) {
+                $resolved[] = $normalized;
+                continue;
+            }
+
+            if (in_array((string) $item, $sectionKeys, true)) {
+                $resolved = array_merge($resolved, array_keys(AcademyOptions::subjectsForSection((string) $item)));
+            }
+        }
+
+        return collect($resolved)->filter()->unique()->values()->toArray();
+    }
+
+    protected function teacherAllowedSectionKeys(): array
+    {
+        if (! $this->isTeacherRole()) {
+            return array_keys(AcademyOptions::sections());
+        }
+
+        $allowedSections = [];
+        $rawAssigned = $this->teacherAssignedValues();
+        $subjects = $this->teacherAllowedSubjectKeys();
+
+        foreach ($rawAssigned as $item) {
+            if (array_key_exists((string) $item, AcademyOptions::sections())) {
+                $allowedSections[] = (string) $item;
+            }
+        }
+
+        foreach ($subjects as $subject) {
+            $allowedSections = array_merge($allowedSections, AcademyOptions::sectionsForSubject((string) $subject));
+        }
+
+        $allowedSections = array_values(array_unique($allowedSections));
+        if (empty($allowedSections)) {
+            return array_keys(AcademyOptions::sections());
+        }
+
+        return $allowedSections;
     }
 }

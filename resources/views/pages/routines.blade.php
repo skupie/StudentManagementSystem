@@ -7,7 +7,7 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if (in_array(auth()->user()?->role, ['instructor', 'lead_instructor']))
+            @if (in_array(auth()->user()?->role, ['teacher', 'lead_instructor']))
                 @livewire('teachers.teacher-routine-table')
             @else
                 @livewire('routines.routine-builder')

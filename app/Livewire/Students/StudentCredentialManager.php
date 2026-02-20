@@ -274,7 +274,7 @@ class StudentCredentialManager extends Component
 
     protected function authorizePage(): void
     {
-        abort_unless(in_array(auth()->user()?->role, ['admin', 'director', 'instructor', 'lead_instructor'], true), 403);
+        abort_unless(in_array(auth()->user()?->role, ['admin', 'director', 'teacher', 'instructor', 'lead_instructor'], true), 403);
     }
 
     protected function filteredStudentsQuery(): Builder

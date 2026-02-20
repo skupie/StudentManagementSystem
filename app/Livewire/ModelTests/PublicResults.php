@@ -5,6 +5,7 @@ namespace App\Livewire\ModelTests;
 use App\Models\ModelTest;
 use App\Models\ModelTestResult;
 use App\Models\ModelTestStudent;
+use App\Support\AcademyOptions;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -148,11 +149,7 @@ class PublicResults extends Component
 
     protected function sectionOptions(): array
     {
-        return [
-            'science' => 'Science',
-            'business_studies' => 'Business Studies',
-            'humanities' => 'Humanities',
-        ];
+        return AcademyOptions::sections();
     }
 
     protected function finalGradeForStudent(int $studentId): array

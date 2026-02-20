@@ -19,7 +19,7 @@ class UserManager extends Component
     public array $form = [
         'name' => '',
         'email' => '',
-        'role' => 'instructor',
+        'role' => 'teacher',
         'password' => '',
         'password_confirmation' => '',
     ];
@@ -29,7 +29,7 @@ class UserManager extends Component
         return [
             'form.name' => ['required', 'string', 'max:255'],
             'form.email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'form.role' => ['required', 'in:admin,director,instructor,assistant'],
+            'form.role' => ['required', 'in:admin,director,teacher,instructor,assistant'],
             'form.password' => ['required', 'confirmed', Password::defaults()],
         ];
     }
@@ -73,7 +73,7 @@ class UserManager extends Component
         $this->form = [
             'name' => '',
             'email' => '',
-            'role' => 'instructor',
+            'role' => 'teacher',
             'password' => '',
             'password_confirmation' => '',
         ];

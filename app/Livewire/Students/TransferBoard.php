@@ -74,6 +74,10 @@ class TransferBoard extends Component
 
     public function promptTransfer(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingTransfer = true;
     }
 
@@ -84,6 +88,10 @@ class TransferBoard extends Component
 
     public function promptRevert(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingRevert = true;
     }
 
@@ -94,6 +102,10 @@ class TransferBoard extends Component
 
     public function transfer(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingTransfer = false;
         $ids = Student::query()
             ->where('class_level', 'hsc_1')
@@ -114,6 +126,10 @@ class TransferBoard extends Component
 
     public function revert(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingRevert = false;
         if (empty($this->lastPromotedIds)) {
             $this->alert = 'Nothing to revert. Please promote first.';
@@ -132,6 +148,10 @@ class TransferBoard extends Component
 
     public function promptPassAll(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingPassAll = true;
     }
 
@@ -142,6 +162,10 @@ class TransferBoard extends Component
 
     public function promptUnpass(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingUnpass = true;
     }
 
@@ -152,6 +176,10 @@ class TransferBoard extends Component
 
     public function passAll(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingPassAll = false;
 
         $ids = Student::query()
@@ -178,6 +206,10 @@ class TransferBoard extends Component
 
     public function revertPassed(): void
     {
+        if (! $this->ensurePinVerified()) {
+            return;
+        }
+
         $this->confirmingUnpass = false;
 
         if (empty($this->lastPassedIds)) {
@@ -194,5 +226,17 @@ class TransferBoard extends Component
         $this->alert = 'Reverted: recently passed students are now active again.';
         $this->dispatch('notify', message: 'Reverted pass status for recent students.');
         $this->lastPassedIds = [];
+    }
+
+    protected function ensurePinVerified(): bool
+    {
+        if ($this->pinVerified) {
+            return true;
+        }
+
+        $this->alert = 'Please verify PIN before running transfer actions.';
+        $this->dispatch('notify', message: 'Please verify transfer PIN first.');
+
+        return false;
     }
 }

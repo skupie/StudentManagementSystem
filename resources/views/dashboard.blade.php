@@ -299,14 +299,34 @@
                 </div>
             @else
                 {{-- Instructor view --}}
-                <div class="grid md:grid-cols-3 gap-4">
-                    @foreach ($classPerformance as $item)
-                        <div class="p-4 bg-white rounded-lg shadow">
-                            <p class="text-sm text-gray-500">{{ \App\Support\AcademyOptions::classLabel($item->class_level) }} / {{ \App\Support\AcademyOptions::sectionLabel($item->section) }}</p>
-                            <p class="text-2xl font-bold">{{ number_format($item->average, 1) }}%</p>
-                            <p class="text-xs text-gray-500 mt-1">Average score this month</p>
+                {{-- Enrollment & Status --}}
+                <div class="bg-white rounded-lg shadow p-4 space-y-4">
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Total Students</p>
+                            <p class="text-2xl font-bold">{{ $studentCounts['total'] }}</p>
                         </div>
-                    @endforeach
+                        <div>
+                            <p class="text-sm text-gray-500">Active</p>
+                            <p class="text-2xl font-bold text-green-600">{{ $studentCounts['active'] }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Inactive</p>
+                            <p class="text-2xl font-bold text-gray-600">{{ $studentCounts['inactive'] }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Passed</p>
+                            <p class="text-2xl font-bold text-indigo-600">{{ $studentCounts['passed'] }}</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-{{ max(1, $classDistribution->count()) }} gap-4">
+                        @foreach ($classDistribution as $class => $count)
+                            <div class="p-3 bg-gray-50 rounded border">
+                                <p class="text-xs text-gray-500">{{ \App\Support\AcademyOptions::classLabel($class) }}</p>
+                                <p class="text-lg font-semibold">{{ $count }}</p>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
 
                 <div class="grid md:grid-cols-2 gap-4">

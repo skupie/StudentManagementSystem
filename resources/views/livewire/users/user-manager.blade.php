@@ -57,7 +57,8 @@
                 <select wire:model.defer="form.role" class="mt-1 block w-full rounded-md border-gray-300">
                     <option value="admin">System Admin</option>
                     <option value="director">Director</option>
-                    <option value="instructor">Lead Instructor</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="instructor">Instructor (Legacy)</option>
                     <option value="assistant">Administrative Assistant</option>
                 </select>
                 <x-input-error :messages="$errors->get('form.role')" class="mt-1" />
@@ -145,7 +146,9 @@
                                     $roleLabels = [
                                         'admin' => 'System Admin',
                                         'director' => 'Director',
-                                        'instructor' => 'Lead Instructor',
+                                        'teacher' => 'Teacher',
+                                        'instructor' => 'Instructor (Legacy)',
+                                        'lead_instructor' => 'Lead Instructor',
                                         'assistant' => 'Administrative Assistant',
                                     ];
                                 @endphp

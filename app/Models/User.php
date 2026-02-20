@@ -82,7 +82,12 @@ class User extends Authenticatable
 
     public function isInstructor(): bool
     {
-        return $this->role === 'instructor';
+        return in_array($this->role, ['instructor', 'lead_instructor'], true);
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role === 'teacher';
     }
 
     public function isAssistant(): bool
