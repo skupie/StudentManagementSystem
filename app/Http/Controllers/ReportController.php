@@ -11,6 +11,7 @@ use App\Models\Holiday;
 use App\Models\Student;
 use App\Models\WeeklyExamMark;
 use App\Support\AcademyOptions;
+use App\Support\CsvSanitizer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -481,16 +482,16 @@ class ReportController extends Controller
 
         $callback = function () use ($columns, $marks) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, $columns);
+            fputcsv($handle, CsvSanitizer::sanitizeRow($columns));
 
             foreach ($marks as $mark) {
-                fputcsv($handle, [
+                fputcsv($handle, CsvSanitizer::sanitizeRow([
                     optional($mark->exam_date)->format('d M Y'),
                     AcademyOptions::subjectLabel($mark->subject),
                     $mark->marks_obtained,
                     $mark->max_marks,
                     $mark->remarks,
-                ]);
+                ]));
             }
 
             fclose($handle);
@@ -634,7 +635,7 @@ class ReportController extends Controller
         $callback = function () use ($columns, $students, $attendance, $monthDate, $daysInMonth) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, $columns);
+            fputcsv($handle, CsvSanitizer::sanitizeRow($columns));
 
             foreach ($students as $student) {
                 $row = [$student->name];
@@ -662,7 +663,7 @@ class ReportController extends Controller
                 }
 
                 $row[] = $presentCount;
-                fputcsv($handle, $row);
+                fputcsv($handle, CsvSanitizer::sanitizeRow($row));
             }
 
             fclose($handle);

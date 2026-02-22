@@ -114,14 +114,15 @@
         </div>
 
         <div class="bg-white shadow rounded-lg p-4 space-y-3">
-            <h4 class="font-semibold text-gray-800">Class Routine (Today)</h4>
-            <div class="text-xs text-gray-500">Date: {{ now()->format('d M Y') }}</div>
+            <h4 class="font-semibold text-gray-800">Class Routine</h4>
+            <div class="text-xs text-gray-500">Date: {{ \Carbon\Carbon::parse($routineDate)->format('d M Y') }}</div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead>
                         <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             <th class="px-3 py-2">Time Slot</th>
                             <th class="px-3 py-2">Subject</th>
+                            <th class="px-3 py-2">Teacher</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -129,9 +130,10 @@
                             <tr>
                                 <td class="px-3 py-2">{{ $routine->time_slot }}</td>
                                 <td class="px-3 py-2">{{ \App\Support\AcademyOptions::subjectLabel($routine->subject) }}</td>
+                                <td class="px-3 py-2">{{ $routine->teacher?->name ?? '-' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="2" class="px-3 py-4 text-center text-gray-500">No class routine for today.</td></tr>
+                            <tr><td colspan="3" class="px-3 py-4 text-center text-gray-500">No class routine for the selected date.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

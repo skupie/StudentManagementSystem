@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\CsvSanitizer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -63,13 +64,13 @@ class AuditLogBoard extends Component
         $callback = function () {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, ['id', 'user_id', 'user_email', 'action', 'model_type', 'model_id', 'description', 'meta', 'created_at', 'updated_at']);
+            fputcsv($handle, CsvSanitizer::sanitizeRow(['id', 'user_id', 'user_email', 'action', 'model_type', 'model_id', 'description', 'meta', 'created_at', 'updated_at']));
 
             AuditLog::with('user')
                 ->orderByDesc('created_at')
                 ->chunk(200, function ($chunk) use ($handle) {
                     foreach ($chunk as $log) {
-                        fputcsv($handle, [
+                        fputcsv($handle, CsvSanitizer::sanitizeRow([
                             $log->id,
                             $log->user_id,
                             $log->user?->email,
@@ -80,7 +81,7 @@ class AuditLogBoard extends Component
                             $log->meta ? json_encode($log->meta) : '',
                             optional($log->created_at)->toDateTimeString(),
                             optional($log->updated_at)->toDateTimeString(),
-                        ]);
+                        ]));
                     }
                 });
 

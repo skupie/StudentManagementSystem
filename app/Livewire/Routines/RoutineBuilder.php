@@ -5,6 +5,7 @@ namespace App\Livewire\Routines;
 use App\Models\Routine;
 use App\Models\Teacher;
 use App\Support\AcademyOptions;
+use App\Support\CsvSanitizer;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -146,16 +147,16 @@ class RoutineBuilder extends Component
         $callback = function () use ($routines) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, ['class_level', 'section', 'routine_date', 'time_slot', 'subject', 'teacher_id']);
+            fputcsv($handle, CsvSanitizer::sanitizeRow(['class_level', 'section', 'routine_date', 'time_slot', 'subject', 'teacher_id']));
             foreach ($routines as $row) {
-                fputcsv($handle, [
+                fputcsv($handle, CsvSanitizer::sanitizeRow([
                     $row->class_level,
                     $row->section,
                     $row->routine_date,
                     $row->time_slot,
                     $row->subject,
                     $row->teacher_id,
-                ]);
+                ]));
             }
             fclose($handle);
         };

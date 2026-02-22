@@ -5,6 +5,7 @@ namespace App\Livewire\Teachers;
 use App\Models\Teacher;
 use App\Models\User;
 use App\Support\AcademyOptions;
+use App\Support\CsvSanitizer;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
@@ -163,11 +164,11 @@ class TeacherDirectory extends Component
         $callback = function () {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
-            fputcsv($handle, ['name', 'subjects', 'payment', 'contact_number', 'is_active', 'note', 'available_days']);
+            fputcsv($handle, CsvSanitizer::sanitizeRow(['name', 'subjects', 'payment', 'contact_number', 'is_active', 'note', 'available_days']));
 
             Teacher::orderBy('name')->chunk(200, function ($chunk) use ($handle) {
                 foreach ($chunk as $teacher) {
-                    fputcsv($handle, [
+                    fputcsv($handle, CsvSanitizer::sanitizeRow([
                         $teacher->name,
                         implode(',', (array) ($teacher->subjects ?? ($teacher->subject ? [$teacher->subject] : []))),
                         $teacher->payment ?? '',
@@ -175,7 +176,7 @@ class TeacherDirectory extends Component
                         $teacher->is_active ? '1' : '0',
                         $teacher->note ?? '',
                         implode(',', (array) ($teacher->available_days ?? [])),
-                    ]);
+                    ]));
                 }
             });
 

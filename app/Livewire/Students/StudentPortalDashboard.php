@@ -20,6 +20,7 @@ class StudentPortalDashboard extends Component
     public function render()
     {
         $student = $this->resolveStudent();
+        $routineDate = $this->dashboardRoutineDate();
         if (! $student) {
             return view('livewire.students.student-portal-dashboard', [
                 'student' => null,
@@ -28,6 +29,7 @@ class StudentPortalDashboard extends Component
                 'dueAmount' => 0,
                 'dueAlertMessage' => null,
                 'todayRoutines' => collect(),
+                'routineDate' => $routineDate,
                 'noteCount' => 0,
                 'latestNoteTitle' => null,
                 'latestNoteTeacherName' => null,
@@ -66,9 +68,10 @@ class StudentPortalDashboard extends Component
         $latestNoteTeacherName = $latestNote?->uploader?->name;
 
         $todayRoutines = Routine::query()
+            ->with('teacher')
             ->where('class_level', $student->class_level)
             ->where('section', $student->section)
-            ->whereDate('routine_date', now()->toDateString())
+            ->whereDate('routine_date', $routineDate)
             ->orderBy('time_slot')
             ->get();
 
@@ -162,6 +165,7 @@ class StudentPortalDashboard extends Component
             'dueAmount' => $dueAmount,
             'dueAlertMessage' => $dueAlertMessage,
             'todayRoutines' => $todayRoutines,
+            'routineDate' => $routineDate,
             'noteCount' => $noteCount,
             'latestNoteTitle' => $latestNoteTitle,
             'latestNoteTeacherName' => $latestNoteTeacherName,
@@ -312,5 +316,15 @@ class StudentPortalDashboard extends Component
         }
 
         return 'Needs Improvement';
+    }
+
+    protected function dashboardRoutineDate(): string
+    {
+        $now = now('Asia/Dhaka');
+        $cutoff = $now->copy()->setTime(19, 0);
+
+        return $now->greaterThan($cutoff)
+            ? $now->copy()->addDay()->toDateString()
+            : $now->toDateString();
     }
 }

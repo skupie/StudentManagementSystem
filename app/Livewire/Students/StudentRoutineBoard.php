@@ -24,7 +24,7 @@ class StudentRoutineBoard extends Component
     public function mount(): void
     {
         $now = now('Asia/Dhaka');
-        $cutoff = $now->copy()->setTime(20, 0);
+        $cutoff = $now->copy()->setTime(19, 0);
         $this->classDate = $now->greaterThan($cutoff)
             ? $now->copy()->addDay()->toDateString()
             : $now->toDateString();

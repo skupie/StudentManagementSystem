@@ -7,6 +7,7 @@ use App\Models\FeeInvoice;
 use App\Models\ManualIncome;
 use App\Models\Student;
 use App\Support\AcademyOptions;
+use App\Support\CsvSanitizer;
 use Carbon\Carbon;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -203,7 +204,7 @@ class StudentManager extends Component
         $callback = function () {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, [
+            fputcsv($handle, CsvSanitizer::sanitizeRow([
                 'name',
                 'gender',
                 'phone_number',
@@ -218,7 +219,7 @@ class StudentManager extends Component
                 'passed_year',
                 'notes',
                 'attendance_logs',
-            ]);
+            ]));
 
             Student::orderBy('name')->chunk(200, function ($chunk) use ($handle) {
                 foreach ($chunk as $student) {
@@ -236,7 +237,7 @@ class StudentManager extends Component
                         })
                         ->implode(';');
 
-                    fputcsv($handle, [
+                    fputcsv($handle, CsvSanitizer::sanitizeRow([
                         $student->name,
                         $student->gender,
                         $student->phone_number,
@@ -251,7 +252,7 @@ class StudentManager extends Component
                         $student->passed_year,
                         str_replace(["\r", "\n"], ' ', $student->notes ?? ''),
                         $logs,
-                    ]);
+                    ]));
                 }
             });
 
