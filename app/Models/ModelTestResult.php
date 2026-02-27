@@ -16,6 +16,7 @@ class ModelTestResult extends Model
         'student_section',
         'year',
         'subject',
+        'test_set',
         'optional_subject',
         'mcq_mark',
         'cq_mark',
@@ -29,6 +30,7 @@ class ModelTestResult extends Model
     ];
 
     protected $casts = [
+        'test_set' => 'integer',
         'mcq_mark' => 'float',
         'cq_mark' => 'float',
         'practical_mark' => 'float',

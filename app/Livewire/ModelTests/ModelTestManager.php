@@ -43,6 +43,7 @@ class ModelTestManager extends Component
         'model_test_id' => null,
         'year' => '',
         'subject' => '',
+        'test_set' => '',
         'test_type' => 'full',
         'mcq_mark' => null,
         'cq_mark' => null,
@@ -70,6 +71,7 @@ class ModelTestManager extends Component
         $this->testForm['type'] = 'full';
         $this->testForm['name'] = '';
         $this->testForm['subject'] = $defaultSubject;
+        $this->marksForm['test_set'] = '';
         $this->marksForm['subject'] = $defaultSubject;
         $this->marksForm['test_type'] = 'full';
         $this->initializeCustomMax(null, null, $defaultSubject);
@@ -115,6 +117,7 @@ class ModelTestManager extends Component
             })
             ->orderByDesc('year')
             ->orderBy('name')
+            ->orderBy('subject')
             ->get();
         $resolvedMarksSection = $this->currentMarksSection();
         $subjectOptions = $this->availableSubjectOptions($resolvedMarksSection);
@@ -146,6 +149,7 @@ class ModelTestManager extends Component
             'sectionOptions' => $sectionOptions,
             'classOptions' => $this->classOptions(),
             'subjectOptions' => $subjectOptions,
+            'setOptions' => $this->setOptions(),
             'defaultYear' => now()->year,
             'marksSection' => $resolvedMarksSection,
             'markType' => $markType,
@@ -184,6 +188,11 @@ class ModelTestManager extends Component
                 $this->marksForm['subject'] = $this->marksForm['subject'] ?: array_key_first($subjectOptions);
             }
             $this->marksForm['test_type'] = $test->type ?: 'full';
+            if ($this->marksForm['test_type'] !== 'mcq') {
+                $this->marksForm['test_set'] = '';
+            } elseif (($this->marksForm['test_set'] ?? '') === '') {
+                $this->marksForm['test_set'] = '1';
+            }
             $this->initializeCustomMax($this->currentMarksSection(), $this->marksForm['test_type'], $this->marksForm['subject']);
         }
     }
@@ -354,7 +363,7 @@ class ModelTestManager extends Component
         }
 
         if ($this->editingResultId === null && $this->hasExistingMarksEntry()) {
-            $message = 'Marks already entered for this student, model test, year, and subject.';
+            $message = 'Marks already entered for this student, model test, year, subject, and set.';
             $this->addError('marksForm.subject', $message);
             $this->dispatch('notify', message: $message);
             return;
@@ -386,6 +395,7 @@ class ModelTestManager extends Component
         }
         $section = $student->section;
         $type = $test->type ?: 'full';
+        $setNo = $type === 'mcq' ? (int) ($marks['test_set'] ?? 0) : 0;
         $max = $this->maxMarks($section, $type, $marks['subject'] ?? null);
 
         $isCqOnly = $this->isCqOnlySubject($marks['subject'] ?? '');
@@ -423,6 +433,7 @@ class ModelTestManager extends Component
                         'student_section' => $student->section,
                         'year' => (int) $marks['year'],
                         'subject' => $marks['subject'],
+                        'test_set' => $setNo,
                         'mcq_mark' => $mcq,
                         'cq_mark' => $cq,
                         'practical_mark' => $practical,
@@ -443,6 +454,7 @@ class ModelTestManager extends Component
                     'student_section' => $student->section,
                     'year' => (int) $marks['year'],
                     'subject' => $marks['subject'],
+                    'test_set' => $setNo,
                     'mcq_mark' => $mcq,
                     'cq_mark' => $cq,
                     'practical_mark' => $practical,
@@ -457,7 +469,7 @@ class ModelTestManager extends Component
             }
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'mt_results_unique')) {
-                $message = 'Marks already entered for this student, model test, year, and subject.';
+                $message = 'Marks already entered for this student, model test, year, subject, and set.';
                 $this->addError('marksForm.subject', $message);
                 $this->dispatch('notify', message: $message);
                 return;
@@ -490,6 +502,9 @@ class ModelTestManager extends Component
         $this->marksForm['year'] = $result->year;
         $this->marksForm['subject'] = (string) (AcademyOptions::normalizeSubjectKey((string) ($result->subject ?? '')) ?? $result->subject);
         $this->marksForm['test_type'] = $result->test?->type ?? 'full';
+        $this->marksForm['test_set'] = ($result->test?->type ?? 'full') === 'mcq'
+            ? (string) max(1, (int) ($result->test_set ?? 0))
+            : '';
         $this->marksForm['mcq_mark'] = $result->mcq_mark;
         $this->marksForm['cq_mark'] = $result->cq_mark;
         $this->marksForm['practical_mark'] = $result->practical_mark;
@@ -564,6 +579,7 @@ class ModelTestManager extends Component
             'marksForm.model_test_id' => ['required', 'exists:model_tests,id'],
             'marksForm.year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'marksForm.subject' => ['required', Rule::in(array_keys($this->availableSubjectOptions($section)))],
+            'marksForm.test_set' => ['nullable', 'integer', Rule::in(range(1, 10))],
             'marksForm.mcq_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'marksForm.cq_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'marksForm.practical_max' => ['nullable', 'numeric', 'min:0', 'max:500'],
@@ -579,6 +595,7 @@ class ModelTestManager extends Component
                 $rules['marksForm.practical_mark'] = ['nullable', 'numeric', 'min:0', 'max:' . $max['practical']];
             }
         } elseif ($type === 'mcq') {
+            $rules['marksForm.test_set'] = ['required', 'integer', Rule::in(range(1, 10))];
             $rules['marksForm.mcq_mark'] = ['required', 'numeric', 'min:0', 'max:' . $max['mcq']];
         } else {
             $rules['marksForm.cq_mark'] = ['required', 'numeric', 'min:0', 'max:' . $max['cq']];
@@ -650,6 +667,13 @@ class ModelTestManager extends Component
     protected function classOptions(): array
     {
         return AcademyOptions::classes();
+    }
+
+    protected function setOptions(): array
+    {
+        return collect(range(1, 10))
+            ->mapWithKeys(fn (int $value) => [$value => 'SET ' . $value])
+            ->toArray();
     }
 
     protected function subjectOptions(?string $section = null): array
@@ -835,6 +859,9 @@ class ModelTestManager extends Component
         $testId = $this->marksForm['model_test_id'] ?? null;
         $year = $this->marksForm['year'] ?? null;
         $subject = $this->marksForm['subject'] ?? null;
+        $test = $testId ? ModelTest::find($testId) : null;
+        $type = $test?->type ?? ($this->marksForm['test_type'] ?? 'full');
+        $setNo = $type === 'mcq' ? (int) ($this->marksForm['test_set'] ?? 0) : 0;
 
         if (! $studentId || ! $testId || ! $year || ! $subject) {
             return false;
@@ -845,6 +872,7 @@ class ModelTestManager extends Component
             ->where('model_test_id', $testId)
             ->where('year', (int) $year)
             ->where('subject', (string) $subject)
+            ->where('test_set', $setNo)
             ->exists();
     }
 

@@ -52,7 +52,9 @@ class PublicResults extends Component
                 'marksheetResults' => collect(),
                 'marksheetFinal' => ['grade' => null, 'point' => null],
                 'sectionOptions' => $this->sectionOptions(),
-                'examOptions' => ModelTest::orderBy('name')->get(['id', 'name']),
+                'examOptions' => ModelTest::orderByDesc('year')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'type', 'subject', 'year']),
             ]);
         }
 
@@ -64,7 +66,9 @@ class PublicResults extends Component
                 'marksheetResults' => $this->marksheetResults(),
                 'marksheetFinal' => $this->marksheetFinal(),
                 'sectionOptions' => $this->sectionOptions(),
-                'examOptions' => ModelTest::orderBy('name')->get(['id', 'name']),
+                'examOptions' => ModelTest::orderByDesc('year')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'type', 'subject', 'year']),
             ]);
         }
 
@@ -82,7 +86,9 @@ class PublicResults extends Component
             $finals[$student->id] = $this->finalGradeForStudent($student->id);
         }
 
-        $exams = ModelTest::orderBy('name')->get(['id', 'name']);
+        $exams = ModelTest::orderByDesc('year')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'subject', 'year']);
 
         return view('livewire.model-tests.public-results', [
             'students' => $students,

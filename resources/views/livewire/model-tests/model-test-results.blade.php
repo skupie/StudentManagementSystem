@@ -36,7 +36,12 @@
                     <select wire:model.live="examFilter" class="mt-1 block w-full rounded-md border-gray-300">
                         <option value="all">All</option>
                         @foreach ($examOptions as $exam)
-                            <option value="{{ $exam->id }}">{{ $exam->name }}</option>
+                            <option value="{{ $exam->id }}">
+                                {{ $exam->name }}
+                                ({{ ucfirst($exam->type ?? 'full') }},
+                                {{ \App\Support\AcademyOptions::subjectLabel((string) ($exam->subject ?? '')) }}
+                                , {{ $exam->year }})
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -130,6 +135,9 @@
                             </td>
                             <td class="px-3 py-2">
                                 <div class="font-semibold text-gray-800">{{ $test?->name }}</div>
+                                @if (($test?->type ?? '') === 'mcq' && (int) ($row->test_set ?? 0) > 0)
+                                    <div class="text-xs text-indigo-600">SET {{ (int) $row->test_set }}</div>
+                                @endif
                             </td>
                             <td class="px-3 py-2">{{ $subjectLabel }}</td>
                             <td class="px-3 py-2 text-xs text-gray-700 space-y-1">
@@ -185,7 +193,12 @@
                     <select wire:model.defer="publishExam" class="mt-1 block w-full rounded-md border-gray-300">
                         <option value="">Select exam</option>
                         @foreach ($examOptions as $exam)
-                            <option value="{{ $exam->id }}">{{ $exam->name }}</option>
+                            <option value="{{ $exam->id }}">
+                                {{ $exam->name }}
+                                ({{ ucfirst($exam->type ?? 'full') }},
+                                {{ \App\Support\AcademyOptions::subjectLabel((string) ($exam->subject ?? '')) }}
+                                , {{ $exam->year }})
+                            </option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('publishExam')" class="mt-1" />
@@ -215,7 +228,12 @@
                     <select wire:model.defer="unpublishExam" class="mt-1 block w-full rounded-md border-gray-300">
                         <option value="">Select exam</option>
                         @foreach ($examOptions as $exam)
-                            <option value="{{ $exam->id }}">{{ $exam->name }}</option>
+                            <option value="{{ $exam->id }}">
+                                {{ $exam->name }}
+                                ({{ ucfirst($exam->type ?? 'full') }},
+                                {{ \App\Support\AcademyOptions::subjectLabel((string) ($exam->subject ?? '')) }}
+                                , {{ $exam->year }})
+                            </option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('unpublishExam')" class="mt-1" />

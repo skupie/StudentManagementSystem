@@ -482,7 +482,9 @@ class ModelTestResults extends Component
 
     protected function examOptions()
     {
-        return ModelTest::orderBy('name')->get(['id', 'name']);
+        return ModelTest::orderByDesc('year')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'subject', 'year']);
     }
 
     protected function yearOptions()

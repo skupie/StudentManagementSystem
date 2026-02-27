@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('student_section')->nullable();
             $table->unsignedInteger('year')->default((int) date('Y'));
             $table->string('subject')->nullable();
+            $table->unsignedTinyInteger('test_set')->default(0);
             $table->boolean('optional_subject')->default(false);
             $table->decimal('mcq_mark', 6, 2)->nullable();
             $table->decimal('cq_mark', 6, 2)->nullable();
@@ -32,7 +33,7 @@ return new class extends Migration
             $table->decimal('grade_point', 3, 2)->nullable();
             $table->timestamps();
 
-            $table->unique(['model_test_id', 'model_test_student_id', 'year', 'subject'], 'mt_results_unique');
+            $table->unique(['model_test_id', 'model_test_student_id', 'year', 'subject', 'test_set'], 'mt_results_unique');
             $table->index(['year', 'grade']);
             $table->index('optional_subject');
         });

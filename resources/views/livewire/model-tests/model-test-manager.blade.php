@@ -175,7 +175,7 @@
             </div>
         @endif
 
-        <div class="grid md:grid-cols-3 gap-3">
+        <div class="grid md:grid-cols-4 gap-3">
             <div>
                 <x-input-label value="Model Test" />
                 <select wire:model.live="marksForm.model_test_id" class="mt-1 block w-full rounded-md border-gray-300">
@@ -216,6 +216,19 @@
                 </select>
                 <p class="text-xs text-gray-500 mt-1">Subjects are filtered by the selected student's section ({{ $marksSection ?? 'N/A' }}).</p>
                 <x-input-error :messages="$errors->get('marksForm.subject')" class="mt-1" />
+            </div>
+            <div>
+                <x-input-label value="SET" />
+                <select wire:model.defer="marksForm.test_set" class="mt-1 block w-full rounded-md border-gray-300" @disabled($markType !== 'mcq')>
+                    <option value="">Select SET</option>
+                    @foreach ($setOptions as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                @if ($markType !== 'mcq')
+                    <p class="text-xs text-gray-500 mt-1">SET is required only for MCQ model test.</p>
+                @endif
+                <x-input-error :messages="$errors->get('marksForm.test_set')" class="mt-1" />
             </div>
             <div class="flex items-center gap-2 mt-6">
                 <input type="checkbox" wire:model.defer="marksForm.optional_subject" id="optional_subject" class="rounded border-gray-300 text-indigo-600">
@@ -319,6 +332,9 @@
                             <td class="px-3 py-2">
                                 <div class="font-semibold text-gray-900">{{ $result->test?->name ?? 'N/A' }}</div>
                                 <div class="text-xs text-gray-500">{{ ucfirst($result->test?->type ?? '') }}</div>
+                                @if (($result->test?->type ?? '') === 'mcq' && (int) ($result->test_set ?? 0) > 0)
+                                    <div class="text-xs text-indigo-600">SET {{ (int) $result->test_set }}</div>
+                                @endif
                             </td>
                             <td class="px-3 py-2">{{ $subjectOptions[$result->subject] ?? ($result->subject ?? '—') }}</td>
                             <td class="px-3 py-2">{{ $result->year }}</td>
